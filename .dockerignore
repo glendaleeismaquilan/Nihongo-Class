@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/dev-dist
+**/.env
+**/.env.*
+!**/.env.example
+**/service-account.json
+apps/api/seed/audio
+apps/web/playwright-report
+apps/web/test-results
+.git
+*.log

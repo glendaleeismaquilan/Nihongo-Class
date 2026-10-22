@@ -1,0 +1,45 @@
+{
+  "name": "@nihongo/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "seed": "tsx seed/seed.ts",
+    "create-admin": "tsx seed/create-admin.ts"
+  },
+  "dependencies": {
+    "@nihongo/shared": "*",
+    "@supabase/storage-js": "^2.117.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "file-type": "^22.1.1",
+    "firebase-admin": "^14.5.0",
+    "googleapis": "^182.0.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.4.0",
+    "node-cron": "^4.6.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "ws": "^8.22.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^7.2.1",
+    "@types/ws": "^8.18.2",
+    "supertest": "^7.3.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.2"
+  }
+}

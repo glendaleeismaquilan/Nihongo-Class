@@ -1,0 +1,11 @@
+rules_version = '2';
+// Decision 17: files are served only by the API (FR-3.12.5, FR-3.12.9).
+// Built-in audio is read through Firebase download-token URLs, which are
+// independent of these rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
