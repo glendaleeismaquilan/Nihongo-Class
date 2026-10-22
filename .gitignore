@@ -14,3 +14,6 @@ apps/web/test-results/
 apps/api/uploads-tmp/
 .emulator-data/
 apps/api/seed/audio/
+
+# Saved emulator settings (local secrets)
+.env.emulators
