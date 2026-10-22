@@ -1,0 +1,259 @@
+@import "tailwindcss";
+
+/* §13 tokens. Components use these through Tailwind's theme, never raw hex. */
+:root {
+  --ink: #1c2433;
+  --ink-2: #505a6b;
+  --ai: #2a4a7f;
+  --ai-hover: #233f6d;
+  --kasumi: #eef2f6;
+  --paper: #ffffff;
+  --line: #d5dce5;
+  --shu: #c23b22;
+  --shu-hover: #a8321d;
+  --matcha: #466e2c;
+  --genko-line: rgb(42 74 127 / 0.16);
+
+  --level-n5: #3e9e75;
+  --level-n4: #3b82b8;
+  --level-n3: #a67a00;
+  --level-n2: #7b6bb5;
+  --level-n1: #8e3b46;
+
+  --font-ui: "IBM Plex Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-study: "Klee One", "IBM Plex Sans JP", serif;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ai: var(--ai);
+  --color-ai-hover: var(--ai-hover);
+  --color-kasumi: var(--kasumi);
+  --color-paper: var(--paper);
+  --color-line: var(--line);
+  --color-shu: var(--shu);
+  --color-shu-hover: var(--shu-hover);
+  --color-matcha: var(--matcha);
+  --color-n5: var(--level-n5);
+  --color-n4: var(--level-n4);
+  --color-n3: var(--level-n3);
+  --color-n2: var(--level-n2);
+  --color-n1: var(--level-n1);
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-sans: var(--font-ui);
+  --font-study: var(--font-study);
+
+  /* 16px base, ratio 1.25: 13, 16, 20, 25, 31, 39 */
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.5625rem;
+  --text-xl--line-height: 1.3;
+  --text-2xl: 1.9375rem;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 2.4375rem;
+  --text-3xl--line-height: 1.2;
+
+  --radius-paper: 4px;
+  --radius-control: 8px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--kasumi);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  [lang="ja"] {
+    line-height: 1.7;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ai);
+    outline-offset: 2px;
+  }
+  a {
+    color: var(--ai);
+  }
+  ::selection {
+    background: rgb(42 74 127 / 0.18);
+  }
+}
+
+@layer components {
+  /* Study content in Klee One (§13 Type). */
+  .study-text {
+    font-family: var(--font-study);
+  }
+
+  /* 原稿用紙: square grid behind flashcards. */
+  .genko {
+    --cell: 48px;
+    background-color: var(--kasumi);
+    background-image:
+      linear-gradient(var(--genko-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--genko-line) 1px, transparent 1px);
+    background-size: var(--cell) var(--cell);
+    background-position: center center;
+  }
+
+  .genko-cells {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .genko-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cell-size);
+    height: var(--cell-size);
+    border: 1px solid var(--genko-line);
+    margin: 0 -1px -1px 0;
+    font-family: var(--font-study);
+    font-size: calc(var(--cell-size) * 0.72);
+    line-height: 1;
+  }
+
+  /* Sticky-header tables that scroll sideways in their own container. */
+  .data-table-wrap {
+    overflow: auto;
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--paper);
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9375rem;
+  }
+  .data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--paper);
+    text-align: left;
+    font-weight: 600;
+    color: var(--ink-2);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+  .data-table td {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 12px;
+    vertical-align: top;
+  }
+  .data-table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .flip-card {
+    perspective: 1200px;
+  }
+  .flip-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 300ms ease;
+  }
+  .flip-inner.is-flipped {
+    transform: rotateY(180deg);
+  }
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+  }
+
+  .hanamaru-path {
+    stroke-dasharray: var(--len);
+    stroke-dashoffset: var(--len);
+    animation: hanamaru-draw 700ms ease-out forwards;
+  }
+  .seal-in {
+    opacity: 0;
+    animation: seal-in 200ms ease-out 600ms forwards;
+  }
+
+  .progress-indeterminate {
+    background: linear-gradient(90deg, transparent, var(--ai), transparent);
+    background-size: 50% 100%;
+    background-repeat: no-repeat;
+    animation: indeterminate 1.2s linear infinite;
+  }
+}
+
+@keyframes hanamaru-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes seal-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes indeterminate {
+  from {
+    background-position: -50% 0;
+  }
+  to {
+    background-position: 150% 0;
+  }
+}
+
+/* §13 Motion: reduced motion shows the hanamaru drawn and crossfades the flip. */
+@media (prefers-reduced-motion: reduce) {
+  .hanamaru-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .seal-in {
+    animation: none;
+    opacity: 1;
+  }
+  .flip-inner {
+    transition: none;
+    transform: none !important;
+  }
+  .flip-inner .flip-face {
+    transition: opacity 150ms ease;
+  }
+  .flip-inner .flip-back {
+    transform: none;
+    opacity: 0;
+  }
+  .flip-inner.is-flipped .flip-front {
+    opacity: 0;
+  }
+  .flip-inner.is-flipped .flip-back {
+    opacity: 1;
+  }
+  .progress-indeterminate {
+    animation: none;
+  }
+}
