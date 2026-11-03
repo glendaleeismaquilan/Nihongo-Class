@@ -10,7 +10,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "emulators": "firebase emulators:start --project nihongo-class-dev --only auth,firestore,storage",
+    "emulators": "node scripts/firebase.mjs emulators:start --project nihongo-class-dev --only auth,firestore,storage",
     "setup": "node scripts/init-env.mjs",
     "seed": "npm run seed -w @nihongo/api --",
     "create-admin": "npm run create-admin -w @nihongo/api --",
@@ -18,9 +18,9 @@
     "build": "npm run build -w @nihongo/api && npm run build -w @nihongo/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
-    "test": "firebase emulators:exec --project nihongo-class-dev --only auth,firestore,storage \"npm run test:unit\"",
+    "test": "node scripts/firebase.mjs emulators:exec --project nihongo-class-dev --only auth,firestore,storage \"npm run test:unit\"",
     "test:unit": "npm run test -w @nihongo/shared && npm run test -w @nihongo/api && npm run test -w @nihongo/web",
-    "test:e2e": "firebase emulators:exec --project nihongo-class-dev --only auth,firestore,storage \"npm run e2e -w @nihongo/web\""
+    "test:e2e": "node scripts/firebase.mjs emulators:exec --project nihongo-class-dev --only auth,firestore,storage \"npm run e2e -w @nihongo/web\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
