@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { ClassReportDto, SchoolReportDto } from "@nihongo/shared";
-import { col, type AttemptDoc, type AttendanceDoc } from "../db";
+import { col, type AttemptDoc, type AttendanceDoc, type LiveSessionDoc } from "../db";
 import { assertClassAccess } from "../lib/access";
 import { assertSchoolAdmin, currentUser, requireRole } from "../lib/auth";
 import { iso } from "../lib/time";
@@ -26,6 +26,13 @@ export function attendanceRate(records: Pick<AttendanceDoc, "status">[]): number
   return counted ? Math.round((attended / counted) * 1000) / 10 : null;
 }
 
+/**
+ * FR-3.11.9: rates count finished live classes only. Rows on an upcoming,
+ * in-progress, or cancelled one (check-ins before the job finishes it, a
+ * class moved or cancelled after check-ins) never count.
+ */
+const isFinished = (s: Pick<LiveSessionDoc, "status">) => s.status === "completed";
+
 async function inChunks<T>(values: string[], run: (chunk: string[]) => Promise<T[]>): Promise<T[]> {
   const out: T[] = [];
   for (let i = 0; i < values.length; i += 30) out.push(...(await run(values.slice(i, i + 30))));
@@ -50,6 +57,7 @@ reportsRouter.get("/classes/:id/reports", requireRole("teacher", "school_admin")
   const people = await peopleRefs(studentIds);
   const atts = attempts.docs.map((d) => d.data() as AttemptDoc);
   const att = attendance.docs.map((d) => d.data());
+  const finished = new Set(sessions.docs.filter((s) => isFinished(s.data())).map((s) => s.id));
   const viewDocs = views.docs.map((d) => d.data());
   const activeSet = new Set(studentIds);
 
@@ -80,7 +88,7 @@ reportsRouter.get("/classes/:id/reports", requireRole("teacher", "school_admin")
           attempts: mine.length,
           averageScore: avg(mine.map((a) => a.score)),
           bestScores,
-          attendanceRate: attendanceRate(att.filter((a) => a.uid === uid)),
+          attendanceRate: attendanceRate(att.filter((a) => a.uid === uid && finished.has(a.sessionId))),
           materialsOpened: new Set(viewDocs.filter((v) => v.uid === uid).map((v) => v.materialId)).size,
         };
       })
@@ -125,7 +133,13 @@ reportsRouter.get("/schools/:id/reports", requireRole("school_admin"), async (re
     col.attempts().where("schoolId", "==", id).limit(20000).get(),
   ]);
   const classIds = classes.docs.map((c) => c.id);
-  const attendance = await inChunks(classIds, async (chunk) => (await col.attendance().where("classId", "in", chunk).get()).docs.map((d) => d.data()));
+  const [allAttendance, finishedIds] = await Promise.all([
+    inChunks(classIds, async (chunk) => (await col.attendance().where("classId", "in", chunk).get()).docs.map((d) => d.data())),
+    inChunks(classIds, async (chunk) => (await col.liveSessions().where("classId", "in", chunk).get()).docs.filter((d) => isFinished(d.data())).map((d) => d.id)),
+  ]);
+  // The same records as each class's own report: finished live classes only.
+  const finished = new Set(finishedIds);
+  const attendance = allAttendance.filter((a) => finished.has(a.sessionId));
   const atts = attempts.docs.map((d) => d.data() as AttemptDoc);
   const enr = enrollments.docs.map((d) => d.data());
   const teacherIds = [...new Set(classes.docs.flatMap((c) => c.data().teacherIds))];

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
-import { attendanceId, col, enrollmentId } from "../src/db";
+import { attendanceId, col, enrollmentId, type AttendanceDoc } from "../src/db";
 import { encryptSecret } from "../src/lib/crypto";
 import { now } from "../src/lib/time";
 import { GoogleReconnectError, setCalendarProvider, type CalendarProvider, type EventInput } from "../src/services/calendar";
@@ -310,6 +310,47 @@ describe("FR-3.11.7 / FR-3.11.8 joining and attendance", () => {
     const me = res.body.students.find((s: { uid: string }) => s.uid === w.student.uid);
     expect(me.attendanceRate).toBeGreaterThan(0);
     expect(me.attendanceRate).toBeLessThanOrEqual(100);
+  });
+
+  it("FR-3.11.9 FR-3.9.4 class and school reports count only finished live classes", async () => {
+    // A school of its own, so the school totals are this test's alone.
+    const s = await createWorld();
+    const students = [s.student, ...(await Promise.all([1, 2, 3].map(() => createUser("student", { schoolId: s.schoolId }))))];
+    const { classId: main } = await seedClass(s.schoolId, [s.teacher.uid], { name: "Attendance class" });
+    const { classId: fresh } = await seedClass(s.schoolId, [s.teacher.uid], { name: "No finished class yet" });
+    for (const st of students) await seedEnrollment(main, st.uid, s.schoolId);
+    await seedEnrollment(fresh, students[0].uid, s.schoolId);
+    const session = (cls: string, minutesFromNow: number, status: string) => seedSession(minutesFromNow, 60, { classId: cls, schoolId: s.schoolId, hostUid: s.teacher.uid, status });
+    const mark = (sessionId: string, cls: string, statuses: AttendanceDoc["status"][]) =>
+      Promise.all(
+        statuses.map((status, i) =>
+          col.attendance().doc(attendanceId(sessionId, students[i].uid)).set({ sessionId, classId: cls, uid: students[i].uid, status, joinedAt: null, source: "teacher", updatedBy: null, updatedAt: now() }),
+        ),
+      );
+
+    // Finished: excused doesn't count, so 2 of 3 attended.
+    await mark(await session(main, -7 * 24 * 60, "completed"), main, ["present", "late", "absent", "excused"]);
+    // Rows on live classes that haven't finished: an upcoming one (moved after check-ins),
+    // a cancelled one, and one still in progress that the job hasn't marked finished.
+    await mark(await session(main, 5 * 24 * 60, "scheduled"), main, ["absent", "absent", "absent", "absent"]);
+    await mark(await session(main, -2 * 24 * 60, "cancelled"), main, ["absent", "absent", "absent", "absent"]);
+    await mark(await session(main, -10, "scheduled"), main, ["present", "absent", "absent", "absent"]);
+    await mark(await session(fresh, 3 * 24 * 60, "scheduled"), fresh, ["absent"]);
+
+    const cls = await api().get(`/api/classes/${main}/reports`).set(bearer(s.teacher));
+    expect(cls.status).toBe(200);
+    // The Reports tab's "Across 1 finished live classes".
+    const finished = cls.body.sessions.filter((x: { status: string }) => x.status === "completed");
+    expect(finished.map((x: { attendanceRate: number | null }) => x.attendanceRate)).toEqual([66.7]);
+    const byStudent = new Map(cls.body.students.map((x: { uid: string; attendanceRate: number | null }) => [x.uid, x.attendanceRate]));
+    expect(students.map((st) => byStudent.get(st.uid))).toEqual([100, 100, 0, null]);
+
+    const school = await api().get(`/api/schools/${s.schoolId}/reports`).set(bearer(s.admin));
+    expect(school.status).toBe(200);
+    const row = (id: string) => school.body.classes.find((c: { classId: string }) => c.classId === id);
+    expect(row(main).attendanceRate).toBe(66.7);
+    expect(row(fresh).attendanceRate).toBeNull();
+    expect(school.body.totals.attendanceRate).toBe(66.7);
   });
 });
 
