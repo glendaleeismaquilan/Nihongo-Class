@@ -27,7 +27,9 @@ export function StudentDashboard() {
       queryFn: () => api<{ items: MaterialDto[] }>(`/classes/${c.id}/materials`).then((r) => r.items),
     })),
   });
-  const progress = useQuery({ queryKey: ["progress", "all"], queryFn: () => api<ProgressMeDto>("/progress/me") });
+  // Separate key from ProgressPage's useInfiniteQuery(["progress", <type>]) — both call the same endpoint
+  // but return different shapes, and reading one from the other's cache crashes the InfiniteQueryObserver.
+  const progress = useQuery({ queryKey: ["progress", "dashboard"], queryFn: () => api<ProgressMeDto>("/progress/me") });
 
   if (classes.isPending) return <Loading />;
   const upcoming = sessions

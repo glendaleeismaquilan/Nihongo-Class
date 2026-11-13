@@ -1,11 +1,12 @@
-import { Suspense } from "react";
-import { NavLink, Outlet } from "react-router";
+import { Suspense, useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ROLE_LABEL, useAuth, useMe } from "../../lib/auth";
 import { api } from "../../lib/api";
 import { Icon, Loading } from "../ui";
 import { NAV, type NavItem } from "./nav";
 import { OfflineBanner } from "./OfflineBanner";
+import { EmailVerificationBanner } from "../EmailVerificationBanner";
 
 function useUnreadCount() {
   const q = useQuery({
@@ -43,6 +44,10 @@ export function AppShell() {
   const unread = useUnreadCount();
   const tabs = items.filter((i) => i.tab);
   const bellItem = items.find((i) => i.icon === "bell");
+  // Mobile drawer: non-tab items like Settings, plus Sign out, have no home in the bottom bar.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => setMenuOpen(false), [location.pathname]);
 
   const railLink = (item: NavItem) => (
     <NavLink
@@ -71,8 +76,11 @@ export function AppShell() {
         <nav aria-label="Main navigation" className="mt-6 flex flex-1 flex-col gap-1">
           {items.map(railLink)}
         </nav>
-        <div className="border-t border-line pt-3">
-          <p className="truncate px-3 text-sm font-medium">{me.name}</p>
+        <div className={`border-t border-line pt-3 ${me.plan?.premium ? "border-l-4 border-l-amber-500 bg-amber-50 rounded-r-control px-1" : ""}`}>
+          <p className="truncate px-3 text-sm font-medium">
+            {me.name}
+            {me.plan?.premium ? <span className="ml-1 text-amber-700" title="Premium">⭐</span> : null}
+          </p>
           <p className="truncate px-3 text-sm text-ink-2">
             {ROLE_LABEL[me.role]}
             {me.school ? `, ${me.school.name}` : ""}
@@ -111,16 +119,53 @@ export function AppShell() {
       {/* <768px: top bar and bottom tabs */}
       <header className="sticky top-0 z-20 flex print:hidden items-center justify-between border-b border-line bg-paper px-4 py-1 md:hidden">
         <Brand />
-        {bellItem && !bellItem.tab ? (
-          <NavLink to={bellItem.to} aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="relative inline-flex h-11 w-11 items-center justify-center rounded-control text-ink-2">
-            <Icon name="bell" />
-            {unread ? <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-ai" /> : null}
-          </NavLink>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {bellItem && !bellItem.tab ? (
+            <NavLink to={bellItem.to} aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="relative inline-flex h-11 w-11 items-center justify-center rounded-control text-ink-2">
+              <Icon name="bell" />
+              {unread ? <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-ai" /> : null}
+            </NavLink>
+          ) : null}
+          <button type="button" aria-label="Open menu" aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => setMenuOpen(true)} className="inline-flex h-11 w-11 items-center justify-center rounded-control text-ink-2">
+            <Icon name="menu" />
+          </button>
+        </div>
       </header>
+
+      {menuOpen ? (
+        <div id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu" className="fixed inset-0 z-30 md:hidden print:hidden">
+          <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="absolute inset-0 bg-ink/40" />
+          <aside className="absolute right-0 top-0 flex h-dvh w-[86%] max-w-80 flex-col gap-1 bg-paper px-3 py-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <Brand />
+              <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-control text-ink-2">
+                <Icon name="x" />
+              </button>
+            </div>
+            <nav aria-label="All pages" className="mt-4 flex flex-col gap-1">
+              {items.map(railLink)}
+            </nav>
+            <div className={`mt-auto border-t border-line pt-3 ${me.plan?.premium ? "border-l-4 border-l-amber-500 bg-amber-50 rounded-r-control px-1" : ""}`}>
+              <p className="truncate px-3 text-sm font-medium">
+                {me.name}
+                {me.plan?.premium ? <span className="ml-1 text-amber-700" title="Premium">⭐</span> : null}
+              </p>
+              <p className="truncate px-3 text-sm text-ink-2">
+                {ROLE_LABEL[me.role]}
+                {me.school ? `, ${me.school.name}` : ""}
+              </p>
+              <button type="button" onClick={() => { setMenuOpen(false); void signOut(); }} className="mt-2 flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-ink-2 hover:bg-kasumi hover:text-ink">
+                <Icon name="logout" />
+                Sign out
+              </button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       <div className="md:pl-20 lg:pl-60 print:!pl-0">
         <OfflineBanner />
+        <EmailVerificationBanner />
         <main id="main" className="mx-0 w-full max-w-[1120px] px-4 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8">
           <Suspense fallback={<Loading />}>
             <Outlet />

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { AggregateField } from "firebase-admin/firestore";
 import {
   ACTIVITY_TYPES,
   LIMITS,
@@ -169,16 +168,20 @@ studyRouter.get("/progress/me", student, async (req, res) => {
     const c = await col.attempts().doc(q.cursor).get();
     if (c.exists && c.data()!.uid === u.uid) history = history.startAfter(c);
   }
-  const [agg, page, streak, summaries] = await Promise.all([
-    (q.type ? all.where("activityType", "==", q.type) : all).aggregate({ avg: AggregateField.average("score"), count: AggregateField.count() }).get(),
+  // Firestore aggregate queries need a dedicated composite index per field combination
+  // (uid + score, uid + activityType + score). Computing avg + count client-side from a plain
+  // query avoids that extra index and works with the auto-created single-field indexes.
+  const [full, page, streak, summaries] = await Promise.all([
+    (q.type ? all.where("activityType", "==", q.type) : all).select("score").get(),
     history.get(),
     streakFor(u.uid, u.timeZone),
     col.progress().where("uid", "==", u.uid).orderBy("submittedAt", "desc").limit(200).get(),
   ]);
+  const scores = full.docs.map((d) => d.get("score") as number).filter((n) => typeof n === "number");
   const out: ProgressMeDto = {
     streak,
-    averageScore: agg.data().avg == null ? null : Math.round(agg.data().avg! * 10) / 10,
-    attemptCount: agg.data().count,
+    averageScore: scores.length === 0 ? null : Math.round((scores.reduce((s, n) => s + n, 0) / scores.length) * 10) / 10,
+    attemptCount: full.size,
     history: page.docs.map((d) => attemptSummary(d.id, d.data())),
     nextCursor: page.size === LIMITS.pageSize ? page.docs[page.size - 1].id : null,
     summaries: summaries.docs

@@ -13,7 +13,8 @@ export function createApp() {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "same-site" } }));
-  app.use(cors({ origin: env.APP_URL, allowedHeaders: ["Authorization", "Content-Type"], maxAge: 600 }));
+  const origins = [env.APP_URL, ...(env.CORS_EXTRA_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean)];
+  app.use(cors({ origin: origins, allowedHeaders: ["Authorization", "Content-Type"], maxAge: 600 }));
   app.use(pinoHttp({ logger, autoLogging: env.NODE_ENV !== "test" }));
 
   // The PayMongo webhook needs the raw body for its signature, so it is

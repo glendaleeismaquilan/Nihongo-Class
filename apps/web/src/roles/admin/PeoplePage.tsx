@@ -143,8 +143,9 @@ export function PeoplePage() {
                           size="sm"
                           variant="ghost"
                           onClick={async () => {
-                            await sendPasswordResetEmail(auth, u.email).catch(() => undefined);
-                            toast(`Sent a new sign-in link to ${u.email}`, "info");
+                            const ok = await sendPasswordResetEmail(auth, u.email).then(() => true).catch(() => false);
+                            if (ok) toast(`Sent a new sign-in link to ${u.email}`, "info");
+                            else toast(`Couldn't send a sign-in link to ${u.email}. Try again.`, "danger");
                           }}
                         >
                           Resend invite

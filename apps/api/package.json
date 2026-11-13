@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "seed": "tsx seed/seed.ts",
-    "create-admin": "tsx seed/create-admin.ts"
+    "create-admin": "tsx seed/create-admin.ts",
+    "set-role": "tsx seed/set-role.ts"
   },
   "dependencies": {
     "@nihongo/shared": "*",

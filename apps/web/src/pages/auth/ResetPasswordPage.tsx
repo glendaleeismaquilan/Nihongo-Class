@@ -4,6 +4,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { Alert, Button, TextField } from "../../components/ui";
 import { AuthLayout } from "./AuthLayout";
+import { clearFailures } from "../../lib/loginLockout";
 
 /** FR-3.1.1 password reset. The message is the same whether or not the email exists (FR-3.1.2). */
 export function ResetPasswordPage() {
@@ -22,6 +23,9 @@ export function ResetPasswordPage() {
     setError(null);
     try {
       await sendPasswordResetEmail(auth, email.trim(), { url: `${window.location.origin}/login` });
+      // Asking for a reset clears any client-side lockout on this email — a locked
+      // user often reaches this page to recover.
+      clearFailures(email);
     } catch (err: any) {
       if (err?.code === "auth/network-request-failed") {
         setError("Couldn't reach the sign-in service. Check your connection and try again.");

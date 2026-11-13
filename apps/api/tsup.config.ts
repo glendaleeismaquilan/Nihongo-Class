@@ -1,10 +1,11 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/server.ts"],
-  format: ["esm"],
+  // server.ts is the standalone dev entry; app.ts is what Firebase Functions wraps.
+  entry: ["src/server.ts", "src/app.ts"],
+  format: ["esm", "cjs"],
   platform: "node",
-  target: "node22",
+  target: "node20",
   outDir: "dist",
   clean: true,
   sourcemap: true,

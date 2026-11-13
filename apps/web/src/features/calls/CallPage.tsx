@@ -64,6 +64,9 @@ export function CallPage() {
   const [peers, dispatch] = useReducer(peersReducer, []);
   const [phase, setPhase] = useState<"connecting" | "in" | "ended" | "error">("connecting");
   const [endedReason, setEndedReason] = useState<string | null>(null);
+  // Set in the "ended" message handler so the socket's close handler can tell a server-ended call
+  // from a dropped connection and avoid falling through to "Everyone left the call."
+  const endReceivedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -166,6 +169,7 @@ export function CallPage() {
           setEndsAt(msg.endsAt);
           void qc.invalidateQueries({ queryKey: ["call", callId] });
         } else if (msg.type === "ended") {
+          endReceivedRef.current = true;
           setEndedReason(msg.reason);
           setPhase("ended");
         } else if (msg.type === "error") {
@@ -178,7 +182,16 @@ export function CallPage() {
         if (ev.code === 4002) {
           setError("You joined this call from another tab or device.");
           setPhase("error");
-        } else setPhase((p) => (p === "in" || p === "connecting" ? (p === "connecting" ? "error" : "ended") : p));
+          return;
+        }
+        // The server sends an "ended" message before closing a cleanly ended call;
+        // without it, the socket dropped and we show a connection error.
+        if (!endReceivedRef.current) {
+          setError("Lost the call connection. Check your network, then try joining again.");
+          setPhase((p) => (p === "in" || p === "connecting" ? "error" : p));
+          return;
+        }
+        setPhase((p) => (p === "in" || p === "connecting" ? "ended" : p));
       };
     }
     void run();

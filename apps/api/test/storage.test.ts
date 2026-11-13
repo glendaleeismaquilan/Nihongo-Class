@@ -52,6 +52,14 @@ function fakeSupabase(key: string) {
       if (!buckets.get(bucketId)?.objects.has(rest.join("/"))) return notFound();
       return json(200, { signedURL: `/object/sign/${bucketId}/${rest.join("/")}?token=t` });
     }
+    // Object metadata: storage-js 2.118+ answers exists() from here (older clients sent HEAD).
+    // Supabase reports a missing key with code NoSuchKey.
+    if (path.startsWith("/object/info/") && method === "GET") {
+      const [bucketId, ...rest] = path.slice("/object/info/".length).split("/");
+      const obj = buckets.get(bucketId)?.objects.get(rest.join("/"));
+      if (!obj) return json(400, { statusCode: "404", code: "NoSuchKey", error: "not_found", message: "Object not found" });
+      return json(200, { id: `id-${rest.join("/")}`, name: rest.join("/"), bucket_id: bucketId, size: obj.body.length, content_type: obj.contentType, cache_control: obj.cacheControl });
+    }
     const [bucketId, ...rest] = path.slice("/object/".length).split("/");
     const b = buckets.get(bucketId);
     if (!b) return json(400, { statusCode: "404", error: "Bucket not found", message: "Bucket not found" });

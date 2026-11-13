@@ -20,6 +20,8 @@ const schema = z
     PORT: z.coerce.number().int().default(3000),
     APP_URL: z.url(),
     API_URL: z.url(),
+    /** Extra browser origins allowed by CORS, comma-separated (e.g. the mobile app's web build in development). */
+    CORS_EXTRA_ORIGINS: z.string().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
     FIREBASE_PROJECT_ID: z.string().min(1),

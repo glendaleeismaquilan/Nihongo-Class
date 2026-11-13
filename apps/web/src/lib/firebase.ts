@@ -12,5 +12,8 @@ const app = initializeApp({
 export const auth = getAuth(app);
 
 if (import.meta.env.VITE_USE_EMULATORS === "true") {
-  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  // VITE_AUTH_EMULATOR_HOST may be a host:port (adds http://) or a full https:// URL (for a tunnel).
+  const host = import.meta.env.VITE_AUTH_EMULATOR_HOST || "127.0.0.1:9099";
+  const url = /^https?:\/\//.test(host) ? host : `http://${host}`;
+  connectAuthEmulator(auth, url, { disableWarnings: true });
 }

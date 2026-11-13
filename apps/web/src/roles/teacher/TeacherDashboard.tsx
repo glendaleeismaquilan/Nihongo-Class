@@ -28,7 +28,19 @@ export function TeacherDashboard() {
 
   return (
     <>
-      <PageHeader title={`Welcome, ${me.name}`} actions={<ButtonLink to="/t/classes">My classes</ButtonLink>} />
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2">
+            <span className={me.plan?.premium ? "text-amber-700" : undefined}>Welcome, {me.name}</span>
+            {me.plan?.premium ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                ⭐ Premium
+              </span>
+            ) : null}
+          </span>
+        }
+        actions={<ButtonLink to="/t/classes">My classes</ButtonLink>}
+      />
       {!active.length ? (
         <EmptyState action={<ButtonLink to="/t/classes">Create a class</ButtonLink>}>You don't have a class yet. Create one, then share its code with your students.</EmptyState>
       ) : (

@@ -1,0 +1,20 @@
+{
+  "name": "nihongo-functions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firebase Functions wrapper around apps/api — deploys the Express API to Cloud Functions.",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "cd ../apps/api && npm run build",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "npm run build && cd .. && firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.1.0",
+    "firebase-functions": "^6.3.2"
+  }
+}

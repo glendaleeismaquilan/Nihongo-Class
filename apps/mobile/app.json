@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Nihongo Class",
+    "slug": "nihongo-class-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#2A4A7F"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nihongoclass.mobile",
+      "bitcode": false
+    },
+    "android": {
+      "package": "com.nihongoclass.mobile",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WAKE_LOCK",
+        "android.permission.BLUETOOTH"
+      ]
+    },
+    "plugins": [
+      "@config-plugins/react-native-webrtc",
+      "./plugins/withApiNetworkSecurity"
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.100.177:3000",
+      "firebaseApiKey": "AIzaSyDjPHeyF9Ay-eKwYTtUyK3MW2XtEgThxBs",
+      "firebaseAuthDomain": "nihongoclass-6342b.firebaseapp.com",
+      "firebaseProjectId": "nihongoclass-6342b",
+      "firebaseAppId": "1:1034700800367:web:b7687ee38c9194ca00a89a",
+      "eas": {
+        "projectId": "1fbe9f13-8aec-42f4-b963-c5ac4b46e0c0"
+      }
+    },
+    "owner": "nihongoclass"
+  }
+}

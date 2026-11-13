@@ -17,6 +17,7 @@ import { currentUser, requireRole, type AuthedUser } from "../lib/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { checkMaterialFile } from "../lib/fileTypes";
 import { notify } from "../lib/notify";
+import { requestOrigin } from "../lib/origin";
 import { limiter } from "../lib/rateLimit";
 import { deleteObject, deletePrefix, putFile } from "../lib/storage";
 import { issueTicket } from "../lib/tickets";
@@ -162,7 +163,10 @@ materialsRouter.patch("/materials/:id", staff, async (req, res) => {
   const publishing = body.status === "published" && m.status !== "published";
   if (body.status) update.status = body.status;
   if (publishing) {
-    if (!m.attachments.length && !(update.description ?? m.description)) throw conflict("Add a file, a link, or a description before publishing.", "material_empty");
+    // Use the incoming description if the request set it (empty counts as cleared),
+    // otherwise the stored one. `update.description ?? m.description` masked a clear.
+    const nextDescription = body.description !== undefined ? update.description : m.description;
+    if (!m.attachments.length && !nextDescription) throw conflict("Add a file, a link, or a description before publishing.", "material_empty");
     update.publishedAt = now();
   }
   await col.materials().doc(id).update(update);
@@ -281,7 +285,7 @@ materialsRouter.post("/materials/:id/attachments/:attId/ticket", member, limiter
   // PDFs and images preview in the app; other files always download (FR-3.12.4).
   const disposition = q.disposition === "inline" && INLINE_TYPES.has(att.mimeType ?? "") ? "inline" : "attachment";
   const { ticket, expiresAt } = issueTicket({ u: u.uid, k: "material", m: id, a: attId, d: disposition });
-  res.json({ url: `${env.API_URL}/api/files/${ticket}`, expiresAt, disposition });
+  res.json({ url: `${requestOrigin(req)}/api/files/${ticket}`, expiresAt, disposition });
 });
 
 /** Opening a material upserts materialViews/{materialId}_{uid} (FR-3.12.6). */

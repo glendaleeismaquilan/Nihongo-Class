@@ -8,6 +8,7 @@ import { col, type DriveItemDoc } from "../db";
 import { currentUser, requireRole } from "../lib/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { checkMaterialFile } from "../lib/fileTypes";
+import { requestOrigin } from "../lib/origin";
 import { limiter } from "../lib/rateLimit";
 import { deleteObject, putFile } from "../lib/storage";
 import { issueTicket } from "../lib/tickets";
@@ -186,5 +187,5 @@ driveRouter.post("/drive/:id/ticket", limiter("file-ticket", 120), async (req, r
   if (item.kind !== "file") throw badRequest("Folders can't be downloaded.");
   const inline = q.disposition === "inline" && /^(application\/pdf|image\/(jpeg|png|webp))$/.test(item.mimeType ?? "");
   const { ticket, expiresAt } = issueTicket({ u: u.uid, k: "drive", m: id, d: inline ? "inline" : "attachment" });
-  res.json({ url: `${env.API_URL}/api/files/${ticket}`, expiresAt, disposition: inline ? "inline" : "attachment" });
+  res.json({ url: `${requestOrigin(req)}/api/files/${ticket}`, expiresAt, disposition: inline ? "inline" : "attachment" });
 });

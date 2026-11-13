@@ -169,6 +169,14 @@ describe("FR-3.12.5 / FR-3.12.9 private files through tickets", () => {
     expect((await api().get(pathOf(dl.body.url))).headers["content-disposition"]).toMatch(/^attachment/);
   });
 
+  it("ticket links use the origin the client reached the API at, not one configured URL", async () => {
+    const path = `/api/materials/${materialId}/attachments/${attId}/ticket`;
+    const lan = await api().post(path).set(bearer(w.student)).set("Host", "192.168.1.50:3000").send({});
+    expect(lan.body.url).toMatch(/^http:\/\/192\.168\.1\.50:3000\/api\/files\/[^/]+$/);
+    const proxied = await api().post(path).set(bearer(w.student)).set("X-Forwarded-Proto", "https").set("X-Forwarded-Host", "class.example.test").send({});
+    expect(proxied.body.url).toMatch(/^https:\/\/class\.example\.test\/api\/files\/[^/]+$/);
+  });
+
   it("FR-3.12.9 expired, tampered, and wrong-file tickets are rejected", async () => {
     const expired = issueTicket({ u: w.student.uid, k: "material", m: materialId, a: attId, d: "inline" }, -10).ticket;
     expect((await api().get(`/api/files/${expired}`)).status).toBe(403);

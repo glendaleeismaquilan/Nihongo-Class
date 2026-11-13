@@ -58,7 +58,19 @@ export function ProfilePage({ children }: { children?: ReactNode }) {
 
   return (
     <>
-      <PageHeader title="Profile" description={`${ROLE_LABEL[me.role]}${me.school ? ` at ${me.school.name}` : ""}. Signed in as ${me.email}.`} />
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2">
+            Profile
+            {me.plan?.premium ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                ⭐ Premium
+              </span>
+            ) : null}
+          </span>
+        }
+        description={`${ROLE_LABEL[me.role]}${me.school ? ` at ${me.school.name}` : ""}. Signed in as ${me.email}.`}
+      />
       {children}
       <Panel className="max-w-xl px-5 py-5">
         <form onSubmit={save} className="flex flex-col gap-4">

@@ -18,6 +18,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Diagnostic: surface any JS error on screen so a blank WebView at least shows what crashed. Safe to leave in. -->
+    <div id="__err" style="display:none;position:fixed;inset:0;z-index:9999;padding:1rem;font:14px/1.4 system-ui;color:#000;background:#fff;overflow:auto;white-space:pre-wrap;word-break:break-word"></div>
+    <script>
+      (function () {
+        var box = document.getElementById("__err");
+        function show(where, msg) { box.style.display = "block"; box.textContent = (box.textContent ? box.textContent + "\n\n" : "") + where + ": " + msg; }
+        window.addEventListener("error", function (e) { show("error", (e.error && (e.error.stack || e.error.message)) || e.message || String(e)); });
+        window.addEventListener("unhandledrejection", function (e) { show("unhandled promise", (e.reason && (e.reason.stack || e.reason.message)) || String(e.reason)); });
+        setTimeout(function () { if (!document.getElementById("root").children.length && !box.textContent) show("timeout", "App did not render after 8s. URL=" + location.href); }, 8000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

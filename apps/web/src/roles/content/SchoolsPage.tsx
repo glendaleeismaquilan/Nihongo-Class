@@ -8,7 +8,7 @@ import { formatDate } from "../../lib/format";
 import { Alert, Badge, Button, Dialog, EmptyState, ErrorState, IconButton, Loading, PageHeader, Panel, TextField, useToast } from "../../components/ui";
 import { TimeZoneSelect } from "../../pages/common/ProfilePage";
 
-const sendInvite = (email: string) => sendPasswordResetEmail(auth, email, { url: `${window.location.origin}/login` }).catch(() => undefined);
+const sendInvite = (email: string) => sendPasswordResetEmail(auth, email, { url: `${window.location.origin}/login` }).then(() => true).catch(() => false);
 
 /** Only a Content Admin creates schools and their School Admins. */
 export function SchoolsPage() {
@@ -92,8 +92,9 @@ export function SchoolsPage() {
                           size="sm"
                           variant="ghost"
                           onClick={async () => {
-                            await sendInvite(a.email);
-                            toast(`Sent a new sign-in link to ${a.email}`, "info");
+                            const ok = await sendInvite(a.email);
+                            if (ok) toast(`Sent a new sign-in link to ${a.email}`, "info");
+                            else toast(`Couldn't send a sign-in link to ${a.email}. Try again.`, "danger");
                           }}
                         >
                           Resend

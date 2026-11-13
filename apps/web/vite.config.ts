@@ -62,17 +62,19 @@ export default defineConfig(({ command, mode }) => {
     ],
     server: { port: 5173, strictPort: true },
     preview: { port: 4173 },
+    resolve: {
+      // Dedupe to guarantee one React copy — stops the "Cannot read properties of
+      // undefined (reading 'S')" when React and react-dom disagree on symbols.
+      dedupe: ["react", "react-dom", "scheduler"],
+    },
     build: {
       target: "es2022",
       sourcemap: true,
-      rolldownOptions: {
+      rollupOptions: {
         output: {
-          // Long-lived vendor chunks cache across deploys; role screens stay lazy (§14).
-          codeSplitting: {
-            groups: [
-              { name: "vendor-firebase", test: /node_modules[\\/](@firebase|firebase)[\\/]/, priority: 20 },
-              { name: "vendor-react", test: /node_modules[\\/](react|react-dom|react-router|scheduler|@tanstack)[\\/]/, priority: 10 },
-            ],
+          manualChunks: {
+            "vendor-firebase": ["firebase/app", "firebase/auth", "firebase/firestore"],
+            "vendor-react": ["react", "react-dom", "react-router", "scheduler", "@tanstack/react-query"],
           },
         },
       },

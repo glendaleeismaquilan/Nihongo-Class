@@ -6,8 +6,10 @@ import { JOBS, type JobName } from "./services/jobs";
 import { attachCallSignaling } from "./services/calls";
 
 const app = createApp();
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT, paymongoMode: env.PAYMONGO_MODE }, "Nihongo Class API listening");
+// Bind to 0.0.0.0 so a phone on the same Wi-Fi can reach the API through the
+// laptop's LAN IP — no tunnel needed in development.
+const server = app.listen(env.PORT, "0.0.0.0", () => {
+  logger.info({ port: env.PORT, paymongoMode: env.PAYMONGO_MODE }, "Nihongo Class API listening on 0.0.0.0");
 });
 // In-app video call signaling shares the API port (/api/calls/ws).
 attachCallSignaling(server);
