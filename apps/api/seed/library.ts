@@ -1,4 +1,3 @@
-import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { JlptLevel } from "@nihongo/shared";
@@ -6,20 +5,15 @@ import { col, type FlashcardDoc, type ListeningTestDoc, type QuizDoc, type Readi
 import { putPublicAudio } from "../src/lib/storage";
 import { now } from "../src/lib/time";
 import type { SeedContext } from "./seed";
-import { toneWav } from "./tone";
 
-const AUDIO_DIR = join(dirname(fileURLToPath(import.meta.url)), "audio");
+const CLIPS_DIR = join(dirname(fileURLToPath(import.meta.url)), "clips");
 
-let toneIndex = 0;
 /**
- * §15: short placeholder tones stand in for real recordings, which the
- * Content Admin replaces later.
+ * Built-in audio is the spoken clips in seed/clips/ (Windows Japanese voices, made with
+ * scripts/seed-audio). A Content Admin can replace any of them with a recording later.
  */
-async function placeholderAudio(name: string, storagePath: string) {
-  mkdirSync(AUDIO_DIR, { recursive: true });
-  const local = join(AUDIO_DIR, `${name}.wav`);
-  writeFileSync(local, toneWav(330 + (toneIndex++ % 8) * 55, 700));
-  const url = await putPublicAudio(local, storagePath, "audio/wav");
+async function clipAudio(name: string, storagePath: string) {
+  const url = await putPublicAudio(join(CLIPS_DIR, `${name}.wav`), storagePath, "audio/wav");
   return { audioUrl: url, audioPath: storagePath, audioFileName: `${name}.wav` };
 }
 
@@ -105,7 +99,7 @@ export async function seedLibrary(ctx: SeedContext) {
   for (const level of ["N5", "N4"] as const) {
     for (const [i, [term, reading, meaning, example, audioName]] of CARDS[level].entries()) {
       const id = `builtin-${level.toLowerCase()}-card-${i + 1}`;
-      const audio = await placeholderAudio(audioName, `builtin/audio/flashcards/${id}/${audioName}.wav`);
+      const audio = await clipAudio(audioName, `builtin/audio/flashcards/${id}/${audioName}.wav`);
       const card: FlashcardDoc = { term, reading, meaning, exampleSentence: example, ...audio, audioMimeType: "audio/wav", source: "builtin", level, classId: null, lessonId: null, status: "published", shuffleKey: Math.random(), ...base };
       await col.flashcards().doc(id).set(card);
     }
@@ -114,7 +108,7 @@ export async function seedLibrary(ctx: SeedContext) {
     const questions = [];
     for (const q of quizDef.questions) {
       const [text, a, b, c, d, correctIndex] = q;
-      const audio = q.audio ? await placeholderAudio(q.audio, `builtin/audio/quizzes/${quizId}/${q.audio}.wav`) : {};
+      const audio = q.audio ? await clipAudio(q.audio, `builtin/audio/quizzes/${quizId}/${q.audio}.wav`) : {};
       questions.push({ text, choices: [a, b, c, d], correctIndex, ...audio });
     }
     const quiz: QuizDoc = { title: quizDef.title, questions, source: "builtin", level, classId: null, lessonId: null, status: "published", passingScorePct: 60, shuffleKey: Math.random(), ...base };
@@ -128,7 +122,7 @@ export async function seedLibrary(ctx: SeedContext) {
     await col.readingTests().doc(`builtin-reading-${i + 1}`).set(doc);
   }
 
-  const listeningAudio = await placeholderAudio("eki-de", "builtin/audio/listening-tests/builtin-listening-1/eki-de.wav");
+  const listeningAudio = await clipAudio("eki-de", "builtin/audio/listening-tests/builtin-listening-1/eki-de.wav");
   const listening: ListeningTestDoc = {
     title: "駅で",
     level: "N5",

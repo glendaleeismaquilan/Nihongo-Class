@@ -1,4 +1,4 @@
-/** A short sine-tone WAV, used for seed placeholder audio and tests. */
+/** A short sine-tone WAV that the tests upload as a stand-in audio file. */
 export function toneWav(frequency = 440, ms = 600, sampleRate = 16000): Buffer {
   const samples = Math.floor((sampleRate * ms) / 1000);
   const data = Buffer.alloc(samples * 2);

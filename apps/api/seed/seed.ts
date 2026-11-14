@@ -92,7 +92,7 @@ async function main() {
   const classes = await seedClasses(ctx);
   console.log("Classes: N5 Saturday Class (code N5SATK), N4 Evening Class (code N4EVE7). Both free");
   await seedLibrary(ctx);
-  console.log("Built-in library: N5 and N4 flashcards and quizzes, two reading tests, one listening test (placeholder tones in seed/audio/)");
+  console.log("Built-in library: N5 and N4 flashcards and quizzes, two reading tests, one listening test (spoken clips from seed/clips/)");
   await seedLive(ctx, classes);
   console.log("Live classes: an upcoming Saturday class with a pasted Meet link, last week's with attendance");
   await seedMaterials(ctx, classes);

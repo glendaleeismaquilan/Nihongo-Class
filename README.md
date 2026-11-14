@@ -113,7 +113,7 @@ Tunnel URLs change on restart, so update the webhook when they do; reconciliatio
 
 ## 5. Seed data
 
-`npm run seed` targets the emulators and refuses to touch a real project without `--force`. It creates "Demo Nihongo School" (Asia/Manila, 2 of its 5 free teacher slots used); one School Admin, one Content Admin, two Teachers (Tanaka with Premium, Sato on the free plan), and six Students; two free classes, "N5 Saturday Class" and "N4 Evening Class", each with lessons, teacher flashcards, and a quiz; built-in N5 and N4 flashcards, quizzes, a reading test, and a listening test; an upcoming live class with a pasted Meet link; a material post with a sample PDF; a My Drive folder for Tanaka; and Tanaka's paid Premium payment. It generates short placeholder tones into `apps/api/seed/audio/` for built-in audio, which the Content Admin later replaces with real recordings.
+`npm run seed` targets the emulators and refuses to touch a real project without `--force`. It creates "Demo Nihongo School" (Asia/Manila, 2 of its 5 free teacher slots used); one School Admin, one Content Admin, two Teachers (Tanaka with Premium, Sato on the free plan), and six Students; two free classes, "N5 Saturday Class" and "N4 Evening Class", each with lessons, teacher flashcards, and a quiz; built-in N5 and N4 flashcards, quizzes, a reading test, and a listening test; an upcoming live class with a pasted Meet link; a material post with a sample PDF; a My Drive folder for Tanaka; and Tanaka's paid Premium payment. Built-in audio is the spoken clips in `apps/api/seed/clips/` (Windows Japanese voices). The README there says how to regenerate them and how to upload them to a project that was seeded before they existed.
 
 ## 6. Production
 
