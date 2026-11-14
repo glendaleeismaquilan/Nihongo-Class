@@ -1,6 +1,8 @@
 // Live in-app video call. Full mesh WebRTC — every peer connects to every other peer
 // (API caps at 8 total). Signaling runs over the API's WebSocket at /api/calls/ws.
-// Protocol mirrors apps/web/src/features/calls/CallPage.tsx.
+// The signaling messages are exactly the web app's (apps/web/src/features/calls/CallPage.tsx),
+// so phones and browsers can call each other: whoever joins sends an offer to everyone
+// already in the call, and a signal's data is { sdp } (offer or answer) or { candidate }.
 import { useEffect, useRef, useState, useCallback } from "react";
 import { View, Text, Pressable, ActivityIndicator, Alert, StyleSheet, PermissionsAndroid, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,7 +13,7 @@ import {
   mediaDevices,
   RTCView,
 } from "react-native-webrtc";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { auth } from "../../config/firebase";
 import { api, API_URL, errorMessage } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
@@ -53,10 +55,28 @@ export function CallScreen({ route, navigation }) {
   const wsRef = useRef(null);
   const localStreamRef = useRef(null);
   const connections = useRef(new Map()); // peerId -> RTCPeerConnection
+  const pendingIce = useRef(new Map()); // peerId -> candidates that arrived before the offer/answer
+  const names = useRef(new Map()); // peerId -> display name
   const iceServersRef = useRef([]);
   const myIdRef = useRef(null);
 
+  const send = (m) => {
+    if (wsRef.current?.readyState === 1) wsRef.current.send(JSON.stringify(m));
+  };
+
   const call = useQuery({ queryKey: ["call", callId], queryFn: () => api(`/calls/${callId}`) });
+
+  // The class page stays mounted under this screen. When the call screen closes, re-read the
+  // class's call so its banner is right straight away (web reloads the class page instead).
+  const qc = useQueryClient();
+  const classIdRef = useRef(null);
+  classIdRef.current = call.data?.classId ?? classIdRef.current;
+  useEffect(
+    () => () => {
+      if (classIdRef.current) void qc.invalidateQueries({ queryKey: ["class", classIdRef.current, "call"] });
+    },
+    [qc],
+  );
 
   // Countdown ticker
   const [now, setNow] = useState(Date.now());
@@ -71,6 +91,7 @@ export function CallScreen({ route, navigation }) {
       try { pc.close(); } catch {}
     }
     connections.current.clear();
+    pendingIce.current.clear();
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
@@ -91,18 +112,18 @@ export function CallScreen({ route, navigation }) {
     }
 
     pc.onicecandidate = (e) => {
-      if (e.candidate && wsRef.current?.readyState === 1) {
-        wsRef.current.send(JSON.stringify({ type: "signal", to: peerId, data: { kind: "ice", candidate: e.candidate } }));
-      }
+      if (e.candidate) send({ type: "signal", to: peerId, data: { candidate: e.candidate.toJSON() } });
     };
 
     pc.ontrack = (e) => {
       const stream = e.streams?.[0];
-      if (stream) setPeers((prev) => ({ ...prev, [peerId]: { ...(prev[peerId] ?? { name: peerName, mediaAudio: true, mediaVideo: true }), stream } }));
+      if (stream) setPeers((prev) => ({ ...prev, [peerId]: { ...(prev[peerId] ?? { name: peerName, mediaAudio: true, mediaVideo: true }), stream, failed: false } }));
     };
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "failed") {
+        // Show it on the tile instead of "connecting…" forever (usually a network blocking the media).
+        setPeers((prev) => (prev[peerId] ? { ...prev, [peerId]: { ...prev[peerId], failed: true } } : prev));
         try { pc.close(); } catch {}
         connections.current.delete(peerId);
       }
@@ -114,17 +135,16 @@ export function CallScreen({ route, navigation }) {
     if (isInitiator) {
       (async () => {
         try {
-          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-          await pc.setLocalDescription(offer);
-          if (wsRef.current?.readyState === 1) {
-            wsRef.current.send(JSON.stringify({ type: "signal", to: peerId, data: { kind: "offer", sdp: pc.localDescription } }));
-          }
+          await pc.setLocalDescription(await pc.createOffer());
+          send({ type: "signal", to: peerId, data: { sdp: pc.localDescription } });
         } catch (err) {
           console.warn("offer failed", err);
         }
       })();
     }
     return pc;
+  // send only reads wsRef, so it never goes stale.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -178,29 +198,41 @@ export function CallScreen({ route, navigation }) {
           setEndsAt(msg.endsAt);
           setIsHost(msg.hostUid === auth.currentUser?.uid);
           setStatus("live");
-          // Outbound offers to everyone already in the room.
-          for (const p of msg.peers ?? []) buildPeer(p.peerId, p.name, true);
+          // Like web: the one who joins sends an offer to everyone already in the call.
+          for (const p of msg.peers ?? []) {
+            names.current.set(p.peerId, p.name);
+            buildPeer(p.peerId, p.name, true);
+          }
         } else if (msg.type === "peer-joined") {
-          // Wait for their offer — they're the initiator.
+          // They joined, so they send the offer; get ready to answer it.
+          names.current.set(msg.peer.peerId, msg.peer.name);
           buildPeer(msg.peer.peerId, msg.peer.name, false);
         } else if (msg.type === "peer-left") {
           const pc = connections.current.get(msg.peerId);
           if (pc) { try { pc.close(); } catch {} connections.current.delete(msg.peerId); }
+          pendingIce.current.delete(msg.peerId);
+          names.current.delete(msg.peerId);
           setPeers((prev) => { const next = { ...prev }; delete next[msg.peerId]; return next; });
         } else if (msg.type === "signal") {
-          const pc = connections.current.get(msg.from);
-          if (!pc) return;
-          const { kind, sdp, candidate } = msg.data ?? {};
+          // Same handling as web: { sdp } is an offer or an answer; { candidate } waits until
+          // the other side's description is in place.
+          const from = msg.from;
+          const pc = connections.current.get(from) ?? buildPeer(from, names.current.get(from) ?? "", false);
+          const data = msg.data ?? {};
           try {
-            if (kind === "offer") {
-              await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              ws.send(JSON.stringify({ type: "signal", to: msg.from, data: { kind: "answer", sdp: pc.localDescription } }));
-            } else if (kind === "answer") {
-              await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-            } else if (kind === "ice") {
-              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            if (data.sdp) {
+              await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+              for (const c of pendingIce.current.get(from) ?? []) {
+                await pc.addIceCandidate(new RTCIceCandidate(c)).catch((err) => console.warn("ICE candidate rejected", err));
+              }
+              pendingIce.current.delete(from);
+              if (data.sdp.type === "offer") {
+                await pc.setLocalDescription(await pc.createAnswer());
+                send({ type: "signal", to: from, data: { sdp: pc.localDescription } });
+              }
+            } else if (data.candidate) {
+              if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+              else pendingIce.current.set(from, [...(pendingIce.current.get(from) ?? []), data.candidate]);
             }
           } catch (err) {
             console.warn("signal handling failed", err);
@@ -333,7 +365,7 @@ export function CallScreen({ route, navigation }) {
               <Tile name="You" stream={localStream} mirror muted={!micOn} videoOff={!camOn} />
             ) : null}
             {participantList.map(([pid, p]) => (
-              <Tile key={pid} name={p.name} stream={p.stream} muted={!p.mediaAudio} videoOff={!p.mediaVideo} />
+              <Tile key={pid} name={p.name} stream={p.stream} muted={!p.mediaAudio} videoOff={!p.mediaVideo} failed={p.failed} />
             ))}
           </ScrollView>
           <View style={styles.controls}>
@@ -349,14 +381,14 @@ export function CallScreen({ route, navigation }) {
   );
 }
 
-function Tile({ name, stream, muted, videoOff, mirror }) {
+function Tile({ name, stream, muted, videoOff, mirror, failed }) {
   return (
     <View style={styles.tile}>
       {stream && !videoOff ? (
         <RTCView streamURL={stream.toURL()} style={styles.video} objectFit="cover" mirror={mirror} />
       ) : (
         <View style={[styles.video, styles.noVideo]}>
-          <Text style={styles.noVideoText}>{videoOff ? "📷 off" : "connecting…"}</Text>
+          <Text style={styles.noVideoText}>{videoOff ? "📷 off" : failed ? "Couldn't connect" : "connecting…"}</Text>
         </View>
       )}
       <View style={styles.tileName}>

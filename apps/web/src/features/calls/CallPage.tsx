@@ -73,7 +73,9 @@ export function CallPage() {
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
   const localRef = useRef<MediaStream | null>(null);
-  const localVideo = useRef<HTMLVideoElement>(null);
+  // Also kept in state: the self-view <video> only mounts once the call details have loaded,
+  // which can be after the camera opens, so it has to pick the stream up when it appears.
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
   const pendingIce = useRef(new Map<string, RTCIceCandidateInit[]>());
@@ -126,7 +128,7 @@ export function CallPage() {
         }
       }
       if (cancelled) return localRef.current?.getTracks().forEach((t) => t.stop());
-      if (localVideo.current && localRef.current) localVideo.current.srcObject = localRef.current;
+      setLocalStream(localRef.current);
       const token = await auth.currentUser?.getIdToken();
       const ws = new WebSocket(wsUrl());
       wsRef.current = ws;
@@ -315,11 +317,11 @@ export function CallPage() {
       ) : null}
       <main className={`grid flex-1 content-center gap-2 px-2 pb-2 ${grid}`}>
         <Tile name={`${me.name} (you)`} muted={!audioOn} cameraOff={!videoOn}>
-          <video ref={localVideo} autoPlay playsInline muted className="size-full -scale-x-100 object-cover" />
+          <StreamVideo stream={localStream} self />
         </Tile>
         {peers.map((p) => (
           <Tile key={p.peerId} name={p.name} muted={!p.audio} cameraOff={!p.video || !p.stream}>
-            <RemoteVideo stream={p.stream} />
+            <StreamVideo stream={p.stream} />
           </Tile>
         ))}
       </main>
@@ -364,12 +366,13 @@ function Tile({ name, muted, cameraOff, children }: { name: string; muted: boole
   );
 }
 
-function RemoteVideo({ stream }: { stream: MediaStream | null }) {
+/** Plays a stream, attaching it whenever the element mounts or the stream changes. The self-view is muted and mirrored. */
+function StreamVideo({ stream, self = false }: { stream: MediaStream | null; self?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
-  return <video ref={ref} autoPlay playsInline className="size-full object-cover" />;
+  return <video ref={ref} autoPlay playsInline muted={self} className={`size-full object-cover ${self ? "-scale-x-100" : ""}`} />;
 }
 
 function ControlButton({ on, icon, label, onClick, disabled }: { on: boolean; icon: "mic" | "mic-off" | "video" | "video-off"; label: string; onClick: () => void; disabled?: boolean }) {
