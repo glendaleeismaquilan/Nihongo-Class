@@ -83,7 +83,7 @@ export function PremiumPage() {
       </Panel>
       <section>
         <SectionTitle>Payment history</SectionTitle>
-        <PaymentHistory items={payments} />
+        <PaymentHistory items={payments} premium={plan.premium} />
       </section>
     </>
   );

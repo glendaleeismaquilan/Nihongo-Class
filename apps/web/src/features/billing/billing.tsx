@@ -35,7 +35,16 @@ export function useCheckout(path: string) {
   });
 }
 
-export function PaymentHistory({ items, showPayer }: { items: PaymentDto[]; showPayer?: boolean }) {
+/**
+ * "Continue payment" reopens a pending checkout. Premium can't be bought twice,
+ * so a teacher who already has it is never sent back to an old Premium
+ * checkout: paying it would charge again and add nothing. `premium` lets a page
+ * pass a plan fresher than the cached /me.
+ */
+export function PaymentHistory({ items, showPayer, premium }: { items: PaymentDto[]; showPayer?: boolean; premium?: boolean }) {
+  const me = useMe();
+  const hasPremium = premium || !!me.plan?.premium;
+  const canContinue = (p: PaymentDto): p is PaymentDto & { checkoutUrl: string } => p.status === "pending" && !!p.checkoutUrl && !(p.purpose === "premium" && hasPremium);
   if (!items.length) return <EmptyState>No payments yet.</EmptyState>;
   return (
     <DataTable label="Payment history">
@@ -68,7 +77,7 @@ export function PaymentHistory({ items, showPayer }: { items: PaymentDto[]; show
                 <ButtonLink size="sm" variant="ghost" to={`${billingHome(p)}/receipts/${p.id}`} icon="receipt">
                   Receipt
                 </ButtonLink>
-              ) : p.status === "pending" && p.checkoutUrl ? (
+              ) : canContinue(p) ? (
                 <ButtonAnchor size="sm" variant="ghost" href={p.checkoutUrl}>
                   Continue payment
                 </ButtonAnchor>
