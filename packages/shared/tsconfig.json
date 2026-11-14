@@ -1,5 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "types": ["node"] },
+  // allowJs: test/mobile-mirror.test.ts imports the mobile app's plain-JS copies of this package.
+  "compilerOptions": { "types": ["node"], "allowJs": true },
   "include": ["src", "test"]
 }
