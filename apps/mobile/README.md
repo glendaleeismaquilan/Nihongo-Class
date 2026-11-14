@@ -35,9 +35,16 @@ npx eas-cli build --platform android --profile preview
 
 ## Run it in a browser while developing
 
-The app's own screens also run on react-native-web (video calls excepted). Point it at any API
-and, optionally, the Firebase Auth emulator with the same kind of overrides the web app's
-`VITE_*` variables give (read by `app.config.js`; EAS builds set none of them):
+The app's own screens also run on react-native-web (video calls excepted). The web packages aren't
+dependencies (the app ships for phones only), so add them first without saving them; the next
+`npm install` removes them again:
+
+```bash
+npm install --no-save react-native-web@~0.19.10 react-dom@18.2.0 @expo/metro-runtime@~3.2.3
+```
+
+Point it at any API and, optionally, the Firebase Auth emulator with the same kind of overrides the
+web app's `VITE_*` variables give (read by `app.config.js`; EAS builds set none of them):
 
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:3000 npx expo start --web

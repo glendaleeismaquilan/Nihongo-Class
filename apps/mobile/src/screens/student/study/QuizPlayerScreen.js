@@ -4,11 +4,11 @@
 // clip. Unanswered questions are sent as null and count as wrong, after a
 // warning. Route params: { activityType, activityId, back: "class" | "study" }.
 import { useState } from "react";
-import { View, Text, Pressable, ScrollView, Linking, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "../../../lib/api";
-import { useToast } from "../../../components/Toast";
+import { ListeningPlayer } from "../../../components/audio";
 import { Loading, ErrorState } from "../../../components/QueryState";
 import { colors, spacing, text } from "../../../styles/theme";
 import { Button, Panel } from "../ui";
@@ -41,7 +41,6 @@ export function QuizPlayerScreen({ route, navigation }) {
   const [warn, setWarn] = useState(false);
   const [showPassage, setShowPassage] = useState(true);
   const qc = useQueryClient();
-  const toast = useToast();
 
   const q = useQuery({ queryKey: ["activity", type, id], queryFn: () => api(`/activities/${type}/${id}`), staleTime: Infinity });
   const submit = useMutation({
@@ -146,21 +145,14 @@ export function QuizPlayerScreen({ route, navigation }) {
     );
   }
 
-  // FR-3.8.2: listening — the clip, then the questions. The phone opens the clip
-  // with its own player (closest equivalent of the web's in-page player).
+  // FR-3.8.2: listening — the clip, then the questions. The clip plays in the app with
+  // the same controls as the web's in-page player (components/audio.js).
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
       {header(act.title, `Answered ${answered} of ${act.questions.length}`)}
       <ScrollView contentContainerStyle={styles.scroll}>
         {act.audioUrl ? (
-          <Panel style={[styles.panel, styles.player]}>
-            <Text style={{ fontSize: 28 }}>🎧</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={text.body}>Listening clip</Text>
-              <Text style={text.small}>Opens in your phone's audio player. Come back here to answer.</Text>
-            </View>
-            <Button size="sm" onPress={() => Linking.openURL(act.audioUrl).catch((err) => toast.error(errorMessage(err)))}>▶ Play</Button>
-          </Panel>
+          <ListeningPlayer src={act.audioUrl} title={act.title} />
         ) : (
           <View style={[styles.error, { marginBottom: spacing.md }]}><Text style={styles.errorText}>This test's clip is missing.</Text></View>
         )}
@@ -196,5 +188,4 @@ const styles = StyleSheet.create({
   summaryText: { fontWeight: "600", color: colors.ink },
   passageTitle: { fontSize: 20, color: colors.ink, marginTop: spacing.sm, marginBottom: spacing.sm },
   passage: { fontSize: 18, color: colors.ink, lineHeight: 30 },
-  player: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
 });

@@ -4,10 +4,9 @@
 // back: "class" | "study", title }.
 // Mobile extra: "Practice N wrong questions" opens PracticeWrong with the missed
 // questions from result.review (practice only, nothing is submitted).
-import { View, Text, ScrollView, Pressable, Linking, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { errorMessage } from "../../../lib/api";
-import { useToast } from "../../../components/Toast";
+import { ListenButton } from "../../../components/audio";
 import { colors, spacing, text } from "../../../styles/theme";
 import { Button, Panel } from "../ui";
 
@@ -24,13 +23,10 @@ function ReviewMark({ correct }) {
 
 export function ResultsScreen({ route, navigation }) {
   const { result, activityType, activityId, back = "study", title } = route.params;
-  const toast = useToast();
   const backLabel = back === "class" ? "Back to class" : "Back to Self-Study";
   const heading = title ?? result.title;
   const wrong = result.review.filter((r) => !r.correct);
   const answer = (r, i) => `${LETTERS[i]}. ${r.choices[i]}`;
-  // Decision 7: answer audio appears only here, after submission. The phone's own player opens it.
-  const listen = (url) => Linking.openURL(url).catch((err) => toast.error(errorMessage(err)));
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -116,11 +112,10 @@ export function ResultsScreen({ route, navigation }) {
                 </>
               )}
             </View>
+            {/* Decision 7: answer audio appears only here, after submission. */}
             {r.audioUrl ? (
               <View style={styles.audio}>
-                <Button size="sm" variant="secondary" accessibilityLabel={`Play the answer to question ${i + 1}`} onPress={() => listen(r.audioUrl)}>
-                  🔊 Listen
-                </Button>
+                <ListenButton src={r.audioUrl} label={`Play the answer to question ${i + 1}`} />
               </View>
             ) : null}
           </Panel>

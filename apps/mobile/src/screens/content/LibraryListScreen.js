@@ -11,7 +11,7 @@ import { JLPT_LEVELS } from "../../shared/constants";
 import { useToast } from "../../components/Toast";
 import { Loading, ErrorState, EmptyState } from "../../components/QueryState";
 import { EDITOR_ROUTE, TYPE_LABEL } from "./libraryApi";
-import { openClip } from "./AudioField";
+import { ListenButton } from "../../components/audio";
 import { Badge, Btn, Dialog, Header, LevelSwitcher, Segmented, s as ui } from "./ui";
 import { colors, spacing, text } from "../../styles/theme";
 
@@ -137,7 +137,8 @@ export function LibraryListScreen({ route, navigation }) {
             <View style={styles.metaRow}>
               {item.status === "published" ? <Badge tone="success">Published</Badge> : <Badge>Draft</Badge>}
               {type === "flashcards" && item.audioUrl ? (
-                <Btn small variant="secondary" label="Listen" accessibilityLabel={`Play pronunciation of ${item.term}`} onPress={() => openClip(item.audioUrl).catch((e) => toast.error(e?.message ?? "Couldn't play the clip."))} />
+                // Loads on the first press, so a page of 50 cards doesn't load 50 clips.
+                <ListenButton compact lazy src={item.audioUrl} label={`Play pronunciation of ${item.term}`} />
               ) : (
                 <Text style={text.small}>{audioSummary(type, item)}</Text>
               )}

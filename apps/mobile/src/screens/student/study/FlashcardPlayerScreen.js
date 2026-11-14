@@ -4,12 +4,12 @@
 //   { classId, lessonId }     — a class lesson's teacher cards (text only, no audio).
 // Tap flips; Previous / Next / Shuffle move through the deck (swipe left/right too).
 import { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, Linking, PanResponder, StyleSheet } from "react-native";
+import { View, Text, Pressable, PanResponder, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { api, errorMessage } from "../../../lib/api";
+import { api } from "../../../lib/api";
 import { JLPT_LEVELS } from "../../../shared/constants";
-import { useToast } from "../../../components/Toast";
+import { ListenButton, useClip } from "../../../components/audio";
 import { Loading, ErrorState, EmptyState } from "../../../components/QueryState";
 import { colors, spacing, text } from "../../../styles/theme";
 import { Button } from "../ui";
@@ -23,7 +23,8 @@ function LibraryDeck({ level: levelParam, shuffle, navigation }) {
   const [progress, setProgress] = useState({ current: 1, total: 0 });
   const q = useInfiniteQuery({
     queryKey: ["study", "deck", level, !!shuffle],
-    queryFn: ({ pageParam }) => api("/study/library", { query: { level, type: "flashcards", cursor: pageParam, shuffle: shuffle ? 1 : undefined } }),
+    // The API takes shuffle=true|false (studyLibraryQuerySchema), like the web's `shuffle || undefined`.
+    queryFn: ({ pageParam }) => api("/study/library", { query: { level, type: "flashcards", cursor: pageParam, shuffle: shuffle ? true : undefined } }),
     initialPageParam: undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     staleTime: Infinity,
@@ -81,7 +82,8 @@ function FlashcardPlayer({ cards, onIndexChange, onNeedMore }) {
   const [order, setOrder] = useState(cards);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const toast = useToast();
+  // The card's clip loads as soon as the card shows, so Listen plays at once after the flip.
+  const clip = useClip(order[index]?.audioUrl ?? null);
 
   // More cards appended to `cards` (next page) are added at the end of the deck.
   // Same state back when nothing is new, so a re-render with an equal list is a no-op.
@@ -142,9 +144,7 @@ function FlashcardPlayer({ cards, onIndexChange, onNeedMore }) {
               {card.exampleSentence ? <Text style={styles.example}>{card.exampleSentence}</Text> : null}
               {card.audioUrl ? (
                 <View style={{ marginTop: spacing.lg }}>
-                  <Button size="sm" variant="secondary" accessibilityLabel={`Play pronunciation of ${card.term}`} onPress={() => Linking.openURL(card.audioUrl).catch((err) => toast.error(errorMessage(err)))}>
-                    🔊 Listen
-                  </Button>
+                  <ListenButton clip={clip} label={`Play pronunciation of ${card.term}`} />
                 </View>
               ) : null}
             </>

@@ -221,7 +221,7 @@ Every row of Table B, as it stands now. Each row was checked in the app against 
 | Lessons, Live classes, Materials tabs | `student/class/*` | Present |
 | Self-Study | `SelfStudyScreen` | Present |
 | Progress | `ProgressScreen` (plus a mobile-only activity grid built from the same data) | Present |
-| Activity player, results, flashcard decks | `student/study/*` | Present |
+| Activity player, results, flashcard decks | `student/study/*`. Clips play in the app (`components/audio.js`, the web's Listen button and listening player: play, pause, 5 s rewind, replay, position bar). The random deck sends `shuffle=true` like web (the API rejected `1`). | Present |
 
 ### 7.3 Teacher
 
@@ -259,7 +259,7 @@ Every row of Table B, as it stands now. Each row was checked in the app against 
 | Web | Mobile now | Status |
 |---|---|---|
 | Library overview, the 4 lists | `LibraryOverviewScreen`, `LibraryListScreen` | Present |
-| Editors with audio | `LibraryEditorScreens`, `AudioField` | Equivalent: pick an audio file instead of recording one. |
+| Editors with audio | `LibraryEditorScreens`, `AudioField` | Equivalent: pick an audio file instead of recording one. Listen plays the clip in the app. |
 | Excel import → review → publish | `LibraryImportScreen`, `ImportReviewScreen` | Present |
 | Schools | `SchoolsScreen` | Present |
 | Notifications tab (mobile-only, web has none) | removed | Matches web |

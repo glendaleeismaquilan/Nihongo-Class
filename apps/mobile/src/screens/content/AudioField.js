@@ -1,12 +1,12 @@
 // Mobile counterpart of AudioField in apps/web/src/components/audio.tsx.
 // The web page can upload a file or record in the browser; on the phone the
 // equivalent is picking an audio file (MP3, M4A, WAV, OGG, or WebM up to 10 MB,
-// the same types and limit the API accepts). "Listen" opens the clip's public
-// URL in the phone's player, like the student quiz player does.
+// the same types and limit the API accepts). "Listen" plays the clip in the app.
 import { useState } from "react";
-import { View, Text, Linking } from "react-native";
+import { View, Text } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { AUDIO_FILE_TYPES, LIMITS } from "../../shared/constants";
+import { ListenButton } from "../../components/audio";
 import { Btn, s as ui } from "./ui";
 import { colors, spacing, text } from "../../styles/theme";
 
@@ -30,10 +30,6 @@ export async function pickAudioFiles({ multiple = false } = {}) {
   return { files, problems };
 }
 
-export function openClip(url) {
-  return Linking.openURL(url);
-}
-
 export function AudioField({ label, currentUrl, currentName, busy, onSelect, onRemove }) {
   const [error, setError] = useState(null);
 
@@ -53,7 +49,7 @@ export function AudioField({ label, currentUrl, currentName, busy, onSelect, onR
       <Text style={ui.label}>{label}</Text>
       {currentUrl ? (
         <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.sm }}>
-          <Btn small variant="secondary" label="Listen" accessibilityLabel={`Play ${label.toLowerCase()}`} onPress={() => openClip(currentUrl).catch((e) => setError(e?.message ?? "Couldn't play the clip."))} />
+          <ListenButton compact src={currentUrl} label={`Play ${label.toLowerCase()}`} />
           <Text style={[text.small, { flexShrink: 1 }]}>{currentName ?? "Audio attached"}</Text>
           {onRemove ? <Btn small variant="dangerGhost" label="Remove" onPress={onRemove} disabled={busy} /> : null}
         </View>
