@@ -64,6 +64,13 @@ Before a release, also check that the Android bundle compiles:
 npx expo export --platform android --output-dir <a scratch folder>
 ```
 
+## App icon
+
+`assets/icon.png` and `assets/adaptive-icon.png` are the Nihongo Class logo, made from
+`apps/web/brand/logo-source.webp` at 1024 × 1024. `icon.png` is framed like the web's `pwa-512.png`
+(logo 83% of the width, on white). The adaptive foreground is transparent, and the logo's whole outline
+fits Android's 66 dp safe zone (61% of the width), so no launcher shape cuts it; its background is white.
+
 ## Shared code
 
 `src/shared/` is a copy of `packages/shared`: constants, money and time helpers. An EAS build uploads
