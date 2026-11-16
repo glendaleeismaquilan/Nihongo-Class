@@ -24,7 +24,7 @@ export function FinishSignupScreen() {
     setBusy(true);
     setError(null);
     try {
-      await registerProfile(async () => auth.currentUser.uid, { name: name.trim(), privacyConsent: true, timeZone: viewerTimeZone() });
+      await registerProfile(async () => auth.currentUser, { name: name.trim(), privacyConsent: true, timeZone: viewerTimeZone() });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't finish sign-up. Try again.");
     } finally {

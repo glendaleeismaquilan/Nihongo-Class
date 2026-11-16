@@ -60,17 +60,18 @@ export function AuthProvider({ children }) {
 
   /**
    * Runs `create` (which creates or signs in the Firebase account and returns its
-   * uid), then POST /auth/register, then loads /me fresh — mirroring
-   * SignupPage.tsx. The sign-up screen stays up until the profile exists.
+   * user), then POST /auth/register with `body` (or `body(user)`, for a name that
+   * comes from the account), then loads /me fresh — mirroring SignupPage.tsx. The
+   * sign-up screen stays up until the profile exists.
    */
   const registerProfile = useCallback(
     async (create, body) => {
       setRegistering(true);
       try {
-        const uid = await create();
-        await api("/auth/register", { body });
-        await qc.cancelQueries({ queryKey: ["me", uid] });
-        await qc.fetchQuery({ queryKey: ["me", uid], queryFn: () => api("/me"), staleTime: 0 });
+        const user = await create();
+        await api("/auth/register", { body: typeof body === "function" ? body(user) : body });
+        await qc.cancelQueries({ queryKey: ["me", user.uid] });
+        await qc.fetchQuery({ queryKey: ["me", user.uid], queryFn: () => api("/me"), staleTime: 0 });
       } finally {
         setRegistering(false);
       }

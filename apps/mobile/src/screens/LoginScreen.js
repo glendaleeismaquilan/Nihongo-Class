@@ -1,18 +1,15 @@
-import { useState, useEffect, useRef } from "react";
-import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import Constants from "expo-constants";
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
+import { useState, useEffect } from "react";
+import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../config/firebase";
 import { checkLockout, recordFailure, clearFailures, formatCountdown } from "../lib/loginLockout";
+import { googleSignInSupported, signInWithGoogle, isGoogleSignInCancel, googleSignInProblem } from "../lib/googleSignIn";
+import { GoogleButton } from "../components/GoogleButton";
 import { colors, spacing, text } from "../styles/theme";
 import { useNavigation } from "@react-navigation/native";
 
 const LAST_EMAIL_KEY = "login:lastEmail";
-
-WebBrowser.maybeCompleteAuthSession();
 
 const ERROR_MESSAGE = {
   "auth/invalid-email": "Enter a valid email address.",
@@ -36,25 +33,6 @@ export function LoginScreen() {
   useEffect(() => {
     AsyncStorage.getItem(LAST_EMAIL_KEY).then((v) => { if (v) setEmail(v); }).catch(() => {});
   }, []);
-
-  const extra = Constants.expoConfig?.extra ?? {};
-  const [, googleResponse, promptGoogle] = Google.useIdTokenAuthRequest({
-    clientId: extra.googleWebClientId ?? "",
-    androidClientId: extra.googleAndroidClientId,
-    iosClientId: extra.googleIosClientId,
-  });
-
-  useEffect(() => {
-    if (googleResponse?.type === "success") {
-      const idToken = googleResponse.params?.id_token ?? googleResponse.authentication?.idToken;
-      if (idToken) {
-        const credential = GoogleAuthProvider.credential(idToken);
-        signInWithCredential(auth, credential).catch((e) => setError(ERROR_MESSAGE[e?.code] ?? "Couldn't sign in with Google."));
-      }
-    } else if (googleResponse?.type === "error") {
-      setError("Couldn't sign in with Google. Try again.");
-    }
-  }, [googleResponse]);
 
   // Countdown ticker when locked.
   useEffect(() => {
@@ -96,13 +74,18 @@ export function LoginScreen() {
     }
   }
 
+  // Mirrors signInWithGoogle in LoginPage.tsx. A first Google sign-in has no profile
+  // yet, so the navigator moves on to Finish sign-up, as the web app does.
   async function doGoogle() {
     setError(null);
-    if (!extra.googleWebClientId) {
-      Alert.alert("Google sign-in not configured", "Ask your app admin to add googleWebClientId / googleAndroidClientId to app.json → extra.");
-      return;
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      if (!isGoogleSignInCancel(e)) setError(googleSignInProblem(e) ?? "Couldn't sign in with Google. Try again.");
+    } finally {
+      setBusy(false);
     }
-    try { await promptGoogle(); } catch (e) { setError("Couldn't start Google sign-in."); }
   }
 
   const locked = lockedUntil && Date.now() < lockedUntil;
@@ -157,16 +140,7 @@ export function LoginScreen() {
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign in</Text>}
         </Pressable>
 
-        <View style={styles.orRow}>
-          <View style={styles.hr} />
-          <Text style={styles.orText}>or</Text>
-          <View style={styles.hr} />
-        </View>
-
-        <Pressable style={[styles.googleBtn, locked && styles.buttonBusy]} onPress={doGoogle} disabled={locked}>
-          <Text style={styles.googleIcon}>G</Text>
-          <Text style={styles.googleText}>Sign in with Google</Text>
-        </Pressable>
+        {googleSignInSupported ? <GoogleButton label="Sign in with Google" onPress={doGoogle} disabled={busy || !!locked} /> : null}
 
         <View style={styles.linkRow}>
           <Pressable onPress={() => nav.navigate("ResetPassword")} disabled={busy}>
@@ -193,12 +167,6 @@ const styles = StyleSheet.create({
   buttonText: { ...text.button },
   alert: { backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#fecaca", borderRadius: 10, padding: spacing.md, marginBottom: spacing.sm },
   alertText: { color: colors.shu },
-  orRow: { flexDirection: "row", alignItems: "center", marginVertical: spacing.lg, gap: spacing.sm },
-  hr: { flex: 1, height: 1, backgroundColor: colors.line },
-  orText: { color: colors.ink2, fontSize: 12 },
-  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, paddingVertical: 12, borderRadius: 10, gap: spacing.sm },
-  googleIcon: { width: 20, height: 20, textAlign: "center", lineHeight: 20, borderRadius: 10, backgroundColor: "#4285F4", color: "#fff", fontWeight: "900" },
-  googleText: { color: colors.ink, fontWeight: "600", fontSize: 15 },
   linkRow: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.md },
   link: { color: colors.ai, fontSize: 14 },
   linkSmall: { color: colors.ai, fontSize: 13, fontWeight: "600" },

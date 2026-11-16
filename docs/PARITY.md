@@ -193,8 +193,9 @@ Every row of Table B, as it stands now. Each row was checked in the app against 
 | Web | Mobile now | Status |
 |---|---|---|
 | Login with email and password, lockout | `LoginScreen` (demo-account hint removed) | Present |
-| Login with Google | `LoginScreen` | Needs an Android OAuth client (final report). The button says so until then. |
+| Login with Google | `LoginScreen` → `lib/googleSignIn.js`: Android's account picker (Credential Manager, `modules/google-sign-in`), then the same Firebase sign-in; a first sign-in goes to `FinishSignupScreen` | Present once the APK's signing SHA-1 is registered in Firebase (`apps/mobile/README.md`). Not on iOS (no iOS build). |
 | `/signup` → `POST /auth/register` | `SignupScreen` → `registerProfile` | Present |
+| `/signup` "Sign up with Google" (consent first, name from Google) | `SignupScreen` "Sign up with Google" | Present (same SHA-1 condition) |
 | `/signup/finish` | `FinishSignupScreen` (shown on 403 `profile_missing`) | Present |
 | `/consent` | `ConsentScreen` (shown when `privacyConsentAt` is empty) | Present |
 | `/s/choose-level` → `PATCH /me` | `ChooseLevelScreen` | Present |

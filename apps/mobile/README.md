@@ -64,6 +64,29 @@ Before a release, also check that the Android bundle compiles:
 npx expo export --platform android --output-dir <a scratch folder>
 ```
 
+## Google sign-in
+
+"Sign in with Google" (login) and "Sign up with Google" (create account) end in the same Firebase
+sign-in as the web app's popup. On Android, `modules/google-sign-in` (a local Expo module) shows
+Android's Google account picker through Credential Manager. It asks for an ID token for the Firebase
+project's **web** client (`expo.extra.googleWebClientId` in `app.json`, the client ID shown under
+Firebase → Authentication → Sign-in method → Google → Web SDK configuration), and
+`src/lib/googleSignIn.js` signs in to Firebase with it.
+
+Google only answers an app whose package name and signing certificate are registered in the same
+Firebase project. Otherwise the app shows "Google sign-in didn't work: … Developer console is not set
+up correctly". Register each certificate that signs an APK:
+
+1. Get its SHA-1. For an EAS build, run `npx eas-cli credentials -p android` and read "SHA1 Fingerprint", or read it
+   from an APK with `apksigner verify --print-certs app.apk`. A Play Store build is re-signed by Google:
+   use the "App signing key" SHA-1 from Play Console as well.
+2. Firebase console → Project settings → General → Your apps → the Android app
+   `com.nihongoclass.mobile` (add it if it isn't there) → Add fingerprint → paste the SHA-1.
+
+Firebase creates the Android OAuth client for that certificate itself. The browser build uses
+`signInWithPopup`, like the web app. The app isn't built for iOS, so iOS shows no Google button. iOS
+would need its own OAuth client and a native sign-in.
+
 ## App icon
 
 `assets/icon.png` and `assets/adaptive-icon.png` are the Nihongo Class logo, made from

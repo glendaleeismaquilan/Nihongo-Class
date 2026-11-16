@@ -8,6 +8,8 @@ import { auth } from "../../config/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../lib/api";
 import { viewerTimeZone } from "../../lib/format";
+import { googleSignInSupported, signInWithGoogle, isGoogleSignInCancel, googleSignInProblem } from "../../lib/googleSignIn";
+import { GoogleButton } from "../../components/GoogleButton";
 import { PasswordStrength, scorePassword } from "../../components/PasswordStrength";
 import { PrivacyNotice } from "../../components/PrivacyNotice";
 import { colors, spacing, text } from "../../styles/theme";
@@ -37,7 +39,7 @@ export function SignupScreen({ navigation }) {
     setBusy(true);
     try {
       await registerProfile(
-        async () => (await createUserWithEmailAndPassword(auth, email.trim(), password)).user.uid,
+        async () => (await createUserWithEmailAndPassword(auth, email.trim(), password)).user,
         { name: name.trim(), privacyConsent: true, timeZone: viewerTimeZone() },
       );
       // The navigator moves on to Choose Level once /me has the new profile.
@@ -47,6 +49,30 @@ export function SignupScreen({ navigation }) {
       else if (err?.code === "auth/weak-password") setErrors({ password: "Choose a stronger password." });
       else if (err?.code === "auth/invalid-email") setErrors({ email: "Enter a valid email address." });
       else setFormError("Couldn't create the account. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Mirrors signUpWithGoogle in SignupPage.tsx: consent first, then Google, then the
+  // student profile, named from the Google account. Registering is idempotent, so an
+  // account that signed up before just signs in.
+  async function signUpWithGoogle() {
+    if (!consent) {
+      setErrors({ consent: "Accept the privacy notice to continue with Google." });
+      return;
+    }
+    setErrors({});
+    setFormError(null);
+    setBusy(true);
+    try {
+      await registerProfile(signInWithGoogle, (user) => ({
+        name: (user.displayName ?? name).trim() || "Student",
+        privacyConsent: true,
+        timeZone: viewerTimeZone(),
+      }));
+    } catch (err) {
+      if (!isGoogleSignInCancel(err)) setFormError(googleSignInProblem(err) ?? "Couldn't sign up with Google. Try again.");
     } finally {
       setBusy(false);
     }
@@ -82,6 +108,7 @@ export function SignupScreen({ navigation }) {
         <Pressable style={[styles.button, busy && styles.buttonBusy]} onPress={submit} disabled={busy} accessibilityRole="button">
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create account</Text>}
         </Pressable>
+        {googleSignInSupported ? <GoogleButton label="Sign up with Google" onPress={signUpWithGoogle} disabled={busy} /> : null}
         <Pressable style={styles.linkBtn} onPress={() => navigation.navigate("Login")} disabled={busy}>
           <Text style={styles.link}>Already have an account? Sign in</Text>
         </Pressable>

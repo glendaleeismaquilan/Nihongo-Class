@@ -144,7 +144,7 @@ Walked 2026-11-08 and 2026-11-09, after the Phase 1–3 fixes. Each screen was c
 ## Not checked here
 
 - **A real phone.** The new APK has to be installed and opened on a device; see the final report.
-- **Google sign-in on Android.** It needs an Android OAuth client (package and SHA-1 are in the final report). The button explains this until it's set up.
+- **Google's account picker on a phone.** The screens after it were checked in the browser build against the Auth emulator: a new account goes to finish sign-up, "Sign up with Google" registers at once, a returning account opens its home, and cancelling or Google refusing the app shows the right message. The picker itself (`modules/google-sign-in`) needs a phone and the APK's SHA-1 in Firebase (`apps/mobile/README.md`).
 - **File contents on the local copy.** Files live in Supabase, not in the local storage emulator, so file links return 404 there. The ticket and its URL were checked.
 - **Camera and microphone in calls.** Starting a call, its limit, extending and ending were checked through the API; audio and video were not.
 - **Picking files on a phone** (uploads, Excel import). The teacher and content sessions checked these against the API with real files, but nobody tapped through them on a device.
