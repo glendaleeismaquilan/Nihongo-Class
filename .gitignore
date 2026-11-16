@@ -17,3 +17,10 @@ apps/api/seed/audio/
 
 # Saved emulator settings (local secrets)
 .env.emulators
+
+# EAS Build uploads this whole repository and, on Windows, applies only this root
+# .gitignore (not functions/.gitignore, apps/mobile/.gitignore or .git/info/exclude).
+# Repeat here what those hide, so a mobile build never uploads it.
+functions/.env.*
+apps/mobile/.expo/
+.claude/worktrees/
