@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 
 import { auth } from "../../lib/firebase";
 import { useAuth } from "../../lib/auth";
 import { Alert, Button, TextField } from "../../components/ui";
+import { GoogleLogo } from "../../components/GoogleLogo";
 import { AuthLayout } from "./AuthLayout";
 import { checkLockout, recordFailure, clearFailures, formatCountdown } from "../../lib/loginLockout";
 
@@ -136,7 +137,7 @@ export function LoginPage() {
         disabled={busy || !!locked}
         className="flex min-h-11 w-full items-center justify-center gap-3 rounded-paper border border-line bg-paper px-4 py-2 text-ink hover:bg-kasumi disabled:opacity-60"
       >
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#4285F4] text-xs font-black text-white">G</span>
+        <GoogleLogo />
         <span className="font-semibold">Sign in with Google</span>
       </button>
 

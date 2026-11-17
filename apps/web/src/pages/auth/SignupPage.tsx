@@ -9,6 +9,7 @@ import { useAuth } from "../../lib/auth";
 import { viewerTimeZone } from "../../lib/format";
 import { Alert, Button, Checkbox, TextField } from "../../components/ui";
 import { PasswordStrength, scorePassword } from "../../components/PasswordStrength";
+import { GoogleLogo } from "../../components/GoogleLogo";
 import { AuthLayout, PrivacyNotice } from "./AuthLayout";
 import { safeNext } from "./LoginPage";
 
@@ -137,7 +138,7 @@ export function SignupPage() {
         disabled={busy}
         className="flex min-h-11 w-full items-center justify-center gap-3 rounded-paper border border-line bg-paper px-4 py-2 text-ink hover:bg-kasumi disabled:opacity-60"
       >
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#4285F4] text-xs font-black text-white">G</span>
+        <GoogleLogo />
         <span className="font-semibold">Sign up with Google</span>
       </button>
 

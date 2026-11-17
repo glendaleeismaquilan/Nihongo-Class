@@ -1,7 +1,8 @@
 // The "or" divider and Google button under the sign-in and sign-up forms (web: the
 // Google button in LoginPage.tsx and SignupPage.tsx).
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import { colors, spacing } from "../styles/theme";
+import googleG from "../../assets/google-g.png";
 
 export function GoogleButton({ label, onPress, disabled }) {
   return (
@@ -12,7 +13,7 @@ export function GoogleButton({ label, onPress, disabled }) {
         <View style={styles.hr} />
       </View>
       <Pressable style={[styles.button, disabled && styles.disabled]} onPress={onPress} disabled={disabled} accessibilityRole="button">
-        <Text style={styles.icon}>G</Text>
+        <Image source={googleG} style={styles.icon} accessibilityIgnoresInvertColors />
         <Text style={styles.label}>{label}</Text>
       </Pressable>
     </>
@@ -25,6 +26,6 @@ const styles = StyleSheet.create({
   orText: { color: colors.ink2, fontSize: 12 },
   button: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, paddingVertical: 12, borderRadius: 10, gap: spacing.sm },
   disabled: { opacity: 0.6 },
-  icon: { width: 20, height: 20, textAlign: "center", lineHeight: 20, borderRadius: 10, backgroundColor: "#4285F4", color: "#fff", fontWeight: "900" },
+  icon: { width: 20, height: 20 },
   label: { color: colors.ink, fontWeight: "600", fontSize: 15 },
 });
