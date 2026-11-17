@@ -6,7 +6,6 @@ import { api } from "../../lib/api";
 import { Icon, Loading } from "../ui";
 import { NAV, type NavItem } from "./nav";
 import { OfflineBanner } from "./OfflineBanner";
-import { EmailVerificationBanner } from "../EmailVerificationBanner";
 
 function useUnreadCount() {
   const q = useQuery({
@@ -165,7 +164,6 @@ export function AppShell() {
 
       <div className="md:pl-20 lg:pl-60 print:!pl-0">
         <OfflineBanner />
-        <EmailVerificationBanner />
         <main id="main" className="mx-0 w-full max-w-[1120px] px-4 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8">
           <Suspense fallback={<Loading />}>
             <Outlet />

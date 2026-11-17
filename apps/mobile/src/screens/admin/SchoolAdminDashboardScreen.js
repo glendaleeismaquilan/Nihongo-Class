@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { pct } from "../../lib/format";
 import { useAuth } from "../../context/AuthContext";
-import { EmailVerificationBanner } from "../../components/EmailVerificationBanner";
 import { Loading, ErrorState } from "../../components/QueryState";
 import { PageHeader, StatTile, TileGrid, LevelTag, SectionTitle, LinkText } from "./adminUi";
 import { colors, spacing, text } from "../../styles/theme";
@@ -47,7 +46,6 @@ export function SchoolAdminDashboardScreen({ navigation }) {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={report.isRefetching || billing.isRefetching} onRefresh={() => { void report.refetch(); void billing.refetch(); }} />}
       >
-        <EmailVerificationBanner />
         <PageHeader
           title={me?.school?.name ?? "School"}
           description="Your school at a glance."

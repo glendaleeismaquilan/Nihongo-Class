@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, sendEmailVerification, signInWithPopup } from "firebase/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MeDto } from "@nihongo/shared";
 import { auth } from "../../lib/firebase";
@@ -43,6 +43,8 @@ export function SignupPage() {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await api("/auth/register", { body: { name: name.trim(), privacyConsent: true, timeZone: viewerTimeZone() } });
+      // The app opens only after the email is verified (VerifyEmailPage). If this send fails, that page has Resend link.
+      await sendEmailVerification(user).catch(() => undefined);
       // The auth listener may already have asked for /me before the profile existed.
       // Cancel that request and load /me again, so "profile missing" isn't cached.
       await qc.cancelQueries({ queryKey: ["me", user.uid] });

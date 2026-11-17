@@ -55,6 +55,16 @@ export function PeoplePage() {
     },
     onError: (err) => toast(errorMessage(err), "danger"),
   });
+  // A removed person can be brought back. A teacher takes a slot again (402 when none is free); classes aren't restored.
+  const restore = useMutation({
+    mutationFn: (u: UserDto) => api(`/users/${u.uid}`, { method: "PATCH", body: { disabled: false } }),
+    onSuccess: (_data, u) => {
+      toast(`${u.name} can sign in again.`, "success");
+      void qc.invalidateQueries({ queryKey: ["school-users"] });
+      void qc.invalidateQueries({ queryKey: ["billing"] });
+    },
+    onError: (err) => toast(errorMessage(err), "danger"),
+  });
   const billing = useSchoolBilling();
   const seats = billing.data?.seats;
 
@@ -155,7 +165,11 @@ export function PeoplePage() {
                         Remove
                       </Button>
                     </>
-                  ) : null}
+                  ) : (
+                    <Button size="sm" variant="ghost" loading={restore.isPending && restore.variables?.uid === u.uid} onClick={() => restore.mutate(u)}>
+                      Restore
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -7,7 +7,6 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { formatDateTime, formatTime } from "../../lib/format";
-import { EmailVerificationBanner } from "../../components/EmailVerificationBanner";
 import { Loading, ErrorState } from "../../components/QueryState";
 import { colors, spacing, text } from "../../styles/theme";
 import { useMyClasses, useNow, joinState } from "./hooks";
@@ -60,7 +59,6 @@ export function StudentDashboardScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
-        <EmailVerificationBanner />
         <Text style={styles.title} accessibilityRole="header">Welcome back, {me.name}</Text>
 
         {joinable ? (

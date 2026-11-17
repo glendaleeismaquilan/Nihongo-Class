@@ -3,7 +3,7 @@
 // profile (always a student) exactly as it does for the web app.
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, Switch, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth } from "../../config/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../lib/api";
@@ -39,7 +39,12 @@ export function SignupScreen({ navigation }) {
     setBusy(true);
     try {
       await registerProfile(
-        async () => (await createUserWithEmailAndPassword(auth, email.trim(), password)).user,
+        async () => {
+          const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
+          // The app opens only after the email is verified (VerifyEmailScreen), which also has Resend link.
+          await sendEmailVerification(user).catch(() => undefined);
+          return user;
+        },
         { name: name.trim(), privacyConsent: true, timeZone: viewerTimeZone() },
       );
       // The navigator moves on to Choose Level once /me has the new profile.

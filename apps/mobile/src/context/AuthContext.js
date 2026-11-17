@@ -18,6 +18,8 @@ export function AuthProvider({ children }) {
   // True while sign-up creates the Firebase account and registers the profile:
   // /me waits, so it can't cache "profile missing" in between.
   const [registering, setRegistering] = useState(false);
+  // Firebase keeps the same User object when it reloads it, so this bumps the context instead.
+  const [userVersion, setUserVersion] = useState(0);
   const qc = useQueryClient();
   const uidRef = useRef(auth.currentUser?.uid ?? null);
 
@@ -52,6 +54,13 @@ export function AuthProvider({ children }) {
     });
     return () => sub.remove();
   }, [qc]);
+
+  // Re-reads the Firebase user, so a newly verified email is seen without signing in again.
+  const reloadUser = useCallback(async () => {
+    await auth.currentUser?.reload();
+    await auth.currentUser?.getIdToken(true);
+    setUserVersion((v) => v + 1);
+  }, []);
 
   const signOut = useCallback(async () => {
     await fbSignOut(auth);
@@ -109,9 +118,11 @@ export function AuthProvider({ children }) {
       registering,
       refreshMe: () => meQuery.refetch(),
       registerProfile,
+      reloadUser,
       signOut,
     }),
-    [firebaseUser, initializing, registering, meQuery, meError, registerProfile, signOut],
+    // userVersion re-renders after reloadUser()
+    [firebaseUser, initializing, registering, meQuery, meError, registerProfile, reloadUser, signOut, userVersion],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

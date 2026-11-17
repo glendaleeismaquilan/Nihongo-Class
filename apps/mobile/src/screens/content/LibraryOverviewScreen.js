@@ -7,7 +7,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { JLPT_LEVELS, LIBRARY_TYPES } from "../../shared/constants";
-import { EmailVerificationBanner } from "../../components/EmailVerificationBanner";
 import { Loading, ErrorState } from "../../components/QueryState";
 import { TYPE_LABEL } from "./libraryApi";
 import { LevelTag, s as ui } from "./ui";
@@ -22,7 +21,6 @@ export function LibraryOverviewScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={q.refetch} />}>
-        <EmailVerificationBanner />
         <Text style={styles.title}>Built-in library</Text>
         <Text style={styles.sub}>Flashcards, quizzes, reading tests, and listening tests for every JLPT level. Self-Study shows published items only.</Text>
 

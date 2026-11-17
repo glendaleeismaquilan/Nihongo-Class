@@ -65,7 +65,8 @@ export function LoginScreen() {
       const lock = await recordFailure(email);
       if (lock) {
         setLockedUntil(lock.until);
-        setError(`Too many wrong attempts. Try again in ${formatCountdown(lock.msLeft)}.`);
+        // The "Account temporarily locked" notice below counts down, so no second message here.
+        setError(null);
       } else {
         setError(ERROR_MESSAGE[e?.code] ?? FALLBACK);
       }

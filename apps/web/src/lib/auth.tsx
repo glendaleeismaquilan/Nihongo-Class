@@ -12,6 +12,8 @@ interface AuthState {
   meError: ApiError | null;
   meLoading: boolean;
   refreshMe: () => Promise<unknown>;
+  /** Re-reads the Firebase user, so a newly verified email is seen without signing in again. */
+  reloadUser: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -20,6 +22,8 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(auth.currentUser);
   const [initializing, setInitializing] = useState(true);
+  // Firebase keeps the same User object when it reloads it, so this bumps the context instead.
+  const [userVersion, setUserVersion] = useState(0);
   const qc = useQueryClient();
 
   useEffect(
@@ -47,12 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       meError: meQuery.error instanceof ApiError ? meQuery.error : null,
       meLoading: !!firebaseUser && meQuery.isPending,
       refreshMe: () => meQuery.refetch(),
+      reloadUser: async () => {
+        await auth.currentUser?.reload();
+        await auth.currentUser?.getIdToken(true);
+        setUserVersion((v) => v + 1);
+      },
       signOut: async () => {
         await fbSignOut(auth);
         qc.clear();
       },
     }),
-    [firebaseUser, initializing, meQuery, qc],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- userVersion re-renders after reloadUser()
+    [firebaseUser, initializing, meQuery, qc, userVersion],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,6 +13,7 @@ import { FinishSignupScreen } from "../screens/auth/FinishSignupScreen";
 import { ConsentScreen } from "../screens/auth/ConsentScreen";
 import { ResetPasswordScreen } from "../screens/auth/ResetPasswordScreen";
 import { ChooseLevelScreen } from "../screens/auth/ChooseLevelScreen";
+import { VerifyEmailScreen, needsEmailVerification } from "../screens/auth/VerifyEmailScreen";
 import { SplashScreen } from "../screens/SplashScreen";
 import { StudentTabs } from "./StudentTabs";
 import { TeacherTabs } from "./TeacherTabs";
@@ -69,6 +70,8 @@ export function AppNavigator() {
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       </>
     );
+  } else if (needsEmailVerification(firebaseUser)) {
+    screens = <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />;
   } else if (meLoading) {
     screens = <Stack.Screen name="Splash" component={SplashScreen} />;
   } else if (meError?.code === "profile_missing") {

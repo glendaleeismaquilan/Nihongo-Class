@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router";
 import type { Role } from "@nihongo/shared";
 import { ROLE_HOME, useAuth } from "../../lib/auth";
 import { Button, ErrorState, Spinner } from "../ui";
+import { VerifyEmailPage, needsEmailVerification } from "../../pages/auth/VerifyEmailPage";
 
 export function FullPageLoading() {
   return (
@@ -24,6 +25,7 @@ export function RequireRole({ role, children }: { role?: Role; children: ReactNo
 
   if (initializing || meLoading) return <FullPageLoading />;
   if (!firebaseUser) return <Navigate to={`/login?next=${encodeURIComponent(here)}`} replace />;
+  if (needsEmailVerification(firebaseUser)) return <VerifyEmailPage />;
   if (meError?.code === "profile_missing") return <Navigate to="/signup/finish" replace />;
   if (meError || !me) {
     return (
@@ -44,6 +46,7 @@ export function HomeRedirect() {
   const { firebaseUser, initializing, me, meLoading, meError } = useAuth();
   if (initializing || meLoading) return <FullPageLoading />;
   if (!firebaseUser) return <Navigate to="/login" replace />;
+  if (needsEmailVerification(firebaseUser)) return <VerifyEmailPage />;
   if (meError?.code === "profile_missing") return <Navigate to="/signup/finish" replace />;
   if (!me) return <RequireRole>{null}</RequireRole>;
   if (me.role === "student" && !me.studyLevel) return <Navigate to="/s/choose-level" replace />;

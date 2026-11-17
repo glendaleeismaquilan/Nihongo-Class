@@ -51,7 +51,8 @@ export function LoginPage() {
       const lock = recordFailure(email);
       if (lock) {
         setLockedUntil(lock.until);
-        setError(`Too many wrong attempts. Try again in ${formatCountdown(lock.msLeft)}.`);
+        // The "Account temporarily locked" notice below counts down, so no second message here.
+        setError(null);
       } else if (code === "auth/too-many-requests") setError("Too many sign-in attempts. Wait a few minutes, or reset your password.");
       else if (code === "auth/network-request-failed") setError("Couldn't reach the sign-in service. Check your connection and try again.");
       else if (code === "auth/user-disabled") setError("This account is disabled. Contact your school.");

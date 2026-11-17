@@ -50,6 +50,16 @@ export function PeopleScreen({ navigation }) {
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
+  // A removed person can be brought back (web: PeoplePage). A teacher takes a slot again; classes aren't restored.
+  const restore = useMutation({
+    mutationFn: (u) => api(`/users/${u.uid}`, { method: "PATCH", body: { disabled: false } }),
+    onSuccess: (_data, u) => {
+      toast.success(`${u.name} can sign in again.`);
+      void qc.invalidateQueries({ queryKey: ["school-users"] });
+      void qc.invalidateQueries({ queryKey: ["billing"] });
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  });
 
   async function resendInvite(u) {
     try {
@@ -159,7 +169,13 @@ export function PeopleScreen({ navigation }) {
                     <Text style={[styles.ghostText, { color: colors.shu }]}>Remove</Text>
                   </Pressable>
                 </View>
-              ) : null}
+              ) : (
+                <View style={styles.actions}>
+                  <Pressable style={[styles.ghost, restore.isPending && styles.busy]} onPress={() => restore.mutate(u)} disabled={restore.isPending} accessibilityRole="button" accessibilityLabel={`Restore ${u.name}`}>
+                    <Text style={styles.ghostText}>Restore</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           )}
         />
