@@ -23,14 +23,19 @@ import { colors, spacing, text } from "../../styles/theme";
 // http → ws, https → wss: same host the rest of the app's API calls use.
 const wsUrl = API_URL.replace(/^http/i, "ws") + "/api/calls/ws";
 
+// Returns which of the camera and microphone may be used. Like the web app, a missing camera
+// (or both) doesn't stop you joining: you join with audio only, or just see and hear others.
 async function requestMediaPermissions() {
-  if (Platform.OS !== "android") return true;
+  if (Platform.OS !== "android") return { video: true, audio: true };
   const results = await PermissionsAndroid.requestMultiple([
     PermissionsAndroid.PERMISSIONS.CAMERA,
     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
   ]);
-  return Object.values(results).every((v) => v === PermissionsAndroid.RESULTS.GRANTED);
+  const granted = (p) => results[p] === PermissionsAndroid.RESULTS.GRANTED;
+  return { video: granted(PermissionsAndroid.PERMISSIONS.CAMERA), audio: granted(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO) };
 }
+
+const VIDEO = { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
 
 function fmt(seconds) {
   const s = Math.max(0, Math.ceil(seconds));
@@ -49,6 +54,7 @@ export function CallScreen({ route, navigation }) {
   const [endsAt, setEndsAt] = useState(null);
   const [isHost, setIsHost] = useState(false);
   const [endedReason, setEndedReason] = useState(null);
+  const [mediaNote, setMediaNote] = useState("");
   // Premium comes from the signed-in profile (GET /me), the same source as everywhere else.
   const { me } = useAuth();
 
@@ -64,7 +70,8 @@ export function CallScreen({ route, navigation }) {
     if (wsRef.current?.readyState === 1) wsRef.current.send(JSON.stringify(m));
   };
 
-  const call = useQuery({ queryKey: ["call", callId], queryFn: () => api(`/calls/${callId}`) });
+  // Re-read every 20 s like the web app: canExtend turns on when the host buys Premium elsewhere.
+  const call = useQuery({ queryKey: ["call", callId], queryFn: () => api(`/calls/${callId}`), refetchInterval: 20_000 });
 
   // The class page stays mounted under this screen. When the call screen closes, re-read the
   // class's call so its banner is right straight away (web reloads the class page instead).
@@ -107,9 +114,11 @@ export function CallScreen({ route, navigation }) {
   const buildPeer = useCallback((peerId, peerName, isInitiator) => {
     const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
 
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current));
-    }
+    const local = localStreamRef.current;
+    if (local) local.getTracks().forEach((track) => pc.addTrack(track, local));
+    // Same as web: whatever we don't send, we still receive.
+    if (!local?.getAudioTracks().length) pc.addTransceiver("audio", { direction: "recvonly" });
+    if (!local?.getVideoTracks().length) pc.addTransceiver("video", { direction: "recvonly" });
 
     pc.onicecandidate = (e) => {
       if (e.candidate) send({ type: "signal", to: peerId, data: { candidate: e.candidate.toJSON() } });
@@ -151,25 +160,23 @@ export function CallScreen({ route, navigation }) {
     let cancelled = false;
 
     (async () => {
-      const ok = await requestMediaPermissions();
-      if (!ok) {
-        setEndedMsg("Camera and microphone are needed for calls. Enable them in Settings and try again.");
-        setStatus("ended");
-        return;
+      const allowed = await requestMediaPermissions();
+      let stream = null;
+      if (allowed.audio && allowed.video) {
+        try { stream = await mediaDevices.getUserMedia({ audio: true, video: VIDEO }); } catch {}
       }
-
-      let stream;
-      try {
-        stream = await mediaDevices.getUserMedia({
-          audio: true,
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
-        });
-      } catch (err) {
-        setEndedMsg("Couldn't open the camera.");
-        setStatus("ended");
-        return;
+      if (!stream && allowed.audio) {
+        try { stream = await mediaDevices.getUserMedia({ audio: true }); } catch {}
+        if (stream) setMediaNote("Your camera isn't available, so you've joined with audio only.");
       }
-      if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+      if (!stream && allowed.video) {
+        try { stream = await mediaDevices.getUserMedia({ video: VIDEO }); } catch {}
+        if (stream) setMediaNote("Your microphone isn't available, so others can see you but not hear you.");
+      }
+      if (!stream) setMediaNote("The app can't use your camera or microphone. You can still see and hear others. Allow them in Settings, then rejoin.");
+      if (cancelled) { stream?.getTracks().forEach((t) => t.stop()); return; }
+      if (!stream?.getAudioTracks().length) setMicOn(false);
+      if (!stream?.getVideoTracks().length) setCamOn(false);
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -182,6 +189,9 @@ export function CallScreen({ route, navigation }) {
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      // Set once the server says why the call is over (ended, full, no access), so the close
+      // that follows doesn't replace that reason with "Lost connection".
+      let serverSaid = false;
 
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: "join", callId, token }));
@@ -241,17 +251,29 @@ export function CallScreen({ route, navigation }) {
           setPeers((prev) => ({ ...prev, [msg.peerId]: { ...(prev[msg.peerId] ?? { name: "" }), mediaAudio: msg.audio, mediaVideo: msg.video } }));
         } else if (msg.type === "extended") {
           setEndsAt(msg.endsAt);
+          void qc.invalidateQueries({ queryKey: ["call", callId] });
         } else if (msg.type === "ended") {
+          serverSaid = true;
           setEndedReason(msg.reason ?? null);
           setStatus("ended");
         } else if (msg.type === "error") {
+          serverSaid = true;
+          // Like web: a call that already ended reads as ended, not as a failed join.
+          if (msg.code === "call_ended") setEndedReason("ended");
           setEndedMsg(msg.message ?? "The call couldn't be joined.");
           setStatus("ended");
         }
       };
 
-      ws.onclose = () => {
-        setStatus((s) => (s === "ended" ? s : "ended"));
+      ws.onclose = (ev) => {
+        if (cancelled) return;
+        setStatus("ended");
+        if (ev.code === 4002) {
+          setEndedReason(null);
+          setEndedMsg("You joined this call from another tab or device.");
+          return;
+        }
+        if (serverSaid) return;
         setEndedMsg((m) => m || "Lost connection to the call.");
       };
 
@@ -265,7 +287,9 @@ export function CallScreen({ route, navigation }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callId]);
 
+  // Without a microphone or camera there is nothing to turn on, so don't tell the others it is on.
   function toggleMic() {
+    if (!localStreamRef.current?.getAudioTracks().length) return;
     const next = !micOn;
     localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
     setMicOn(next);
@@ -273,6 +297,7 @@ export function CallScreen({ route, navigation }) {
   }
 
   function toggleCam() {
+    if (!localStreamRef.current?.getVideoTracks().length) return;
     const next = !camOn;
     localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
     setCamOn(next);
@@ -294,7 +319,9 @@ export function CallScreen({ route, navigation }) {
 
   async function extend() {
     try {
-      await api(`/calls/${callId}/extend`, { body: {} });
+      const updated = await api(`/calls/${callId}/extend`, { body: {} });
+      if (updated?.endsAt) setEndsAt(updated.endsAt);
+      void qc.invalidateQueries({ queryKey: ["call", callId] });
     } catch (e) {
       Alert.alert("Couldn't extend", errorMessage(e));
     }
@@ -358,6 +385,11 @@ export function CallScreen({ route, navigation }) {
               ) : isTeacher ? (
                 <Pressable style={styles.smallBtn} onPress={goPremium} accessibilityRole="button"><Text style={styles.smallBtnText}>★ Go Premium</Text></Pressable>
               ) : null}
+            </View>
+          ) : null}
+          {mediaNote ? (
+            <View style={styles.lastMinute} accessibilityRole="alert">
+              <Text style={[text.body, { flex: 1 }]}>{mediaNote}</Text>
             </View>
           ) : null}
           <ScrollView contentContainerStyle={styles.grid}>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7,7 +7,7 @@ import { checkLockout, recordFailure, clearFailures, formatCountdown } from "../
 import { googleSignInSupported, signInWithGoogle, isGoogleSignInCancel, googleSignInProblem } from "../lib/googleSignIn";
 import { GoogleButton } from "../components/GoogleButton";
 import { colors, spacing, text } from "../styles/theme";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 const LAST_EMAIL_KEY = "login:lastEmail";
 
@@ -43,6 +43,16 @@ export function LoginScreen() {
   useEffect(() => {
     if (lockedUntil && Date.now() >= lockedUntil) setLockedUntil(null);
   }, [now, lockedUntil]);
+
+  // This screen stays mounted under Forgot password, and asking for a reset clears the lock.
+  // Re-read it whenever the screen is shown (or the email changes) so a cleared lock goes away.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      checkLockout(email).then((lock) => { if (active) setLockedUntil(lock ? lock.until : null); });
+      return () => { active = false; };
+    }, [email]),
+  );
 
   async function checkEmail() {
     const lock = await checkLockout(email);

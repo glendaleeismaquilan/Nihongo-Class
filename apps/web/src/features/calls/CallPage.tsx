@@ -132,6 +132,9 @@ export function CallPage() {
       const token = await auth.currentUser?.getIdToken();
       const ws = new WebSocket(wsUrl());
       wsRef.current = ws;
+      // Set when the server explains why it is closing (call ended, call full, no access),
+      // so the close that follows doesn't replace that message with a connection error.
+      let serverError = false;
       ws.onopen = () => ws.send(JSON.stringify({ type: "join", callId, token }));
       ws.onmessage = async (ev) => {
         const msg = JSON.parse(String(ev.data));
@@ -175,6 +178,7 @@ export function CallPage() {
           setEndedReason(msg.reason);
           setPhase("ended");
         } else if (msg.type === "error") {
+          serverError = true;
           setError(msg.message);
           setPhase(msg.code === "call_ended" ? "ended" : "error");
         }
@@ -186,6 +190,7 @@ export function CallPage() {
           setPhase("error");
           return;
         }
+        if (serverError) return;
         // The server sends an "ended" message before closing a cleanly ended call;
         // without it, the socket dropped and we show a connection error.
         if (!endReceivedRef.current) {
