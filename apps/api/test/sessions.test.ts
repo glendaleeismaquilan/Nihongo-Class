@@ -130,6 +130,20 @@ describe("FR-3.11.1 Google connection", () => {
     expect((await col.integrations().doc(t.uid).get()).exists).toBe(false);
   });
 
+  it("FR-3.11.1 the website's /google/callback page can finish the connection through POST /integrations/google/complete", async () => {
+    const t = await createUser("teacher", { schoolId: w.schoolId });
+    const res = await api().get("/api/integrations/google/connect").set(bearer(t));
+    const state = new URL(res.body.url).searchParams.get("state")!;
+    const done = await api().post("/api/integrations/google/complete").send({ state, code: "good" });
+    expect(done.status).toBe(200);
+    expect(done.body.redirect).toBe("http://localhost:5173/t/settings?google=connected");
+    expect((await col.integrations().doc(t.uid).get()).data()).toMatchObject({ status: "connected", googleEmail: "sensei@gmail.com" });
+    const replay = await api().post("/api/integrations/google/complete").send({ state, code: "good" });
+    expect(replay.body.redirect).toContain("google=expired");
+    const denied = await api().post("/api/integrations/google/complete").send({ state: "nope", error: "access_denied" });
+    expect(denied.body.redirect).toContain("google=expired");
+  });
+
   it("FR-3.11.1 an unknown state is rejected", async () => {
     const cb = await api().get("/api/integrations/google/callback?state=nope&code=good");
     expect(cb.headers.location).toContain("google=expired");

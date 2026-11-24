@@ -46,16 +46,16 @@ integrationsRouter.delete("/integrations/google", hosts, async (req, res) => {
 
 const callbackQuery = z.object({ state: z.string().max(200).optional(), code: z.string().max(2000).optional(), error: z.string().max(200).optional() });
 
-integrationsCallbackRouter.get("/integrations/google/callback", limiter("google-callback", 30), async (req, res) => {
-  const q = parse(callbackQuery, req.query);
+/**
+ * Finishes a Google connection and returns the settings page to send the person
+ * back to, with ?google=connected|denied|expired|error.
+ */
+async function finishGoogleConnect(q: z.infer<typeof callbackQuery>): Promise<string> {
   const settingsFor = async (uid: string | null) => {
     const role = uid ? (await col.users().doc(uid).get()).data()?.role : null;
     return `${env.APP_URL}${role === "school_admin" ? "/a/settings" : "/t/settings"}`;
   };
-  if (!q.state) {
-    res.redirect(`${await settingsFor(null)}?google=error`);
-    return;
-  }
+  if (!q.state) return `${await settingsFor(null)}?google=error`;
   const stateRef = col.oauthStates().doc(q.state);
   // Single use: read and delete the state together.
   const state = await db.runTransaction(async (tx) => {
@@ -63,15 +63,9 @@ integrationsCallbackRouter.get("/integrations/google/callback", limiter("google-
     if (snap.exists) tx.delete(stateRef);
     return snap.data() ?? null;
   });
-  if (!state || state.expiresAt.toMillis() < Date.now()) {
-    res.redirect(`${await settingsFor(state?.uid ?? null)}?google=expired`);
-    return;
-  }
+  if (!state || state.expiresAt.toMillis() < Date.now()) return `${await settingsFor(state?.uid ?? null)}?google=expired`;
   const back = await settingsFor(state.uid);
-  if (q.error || !q.code) {
-    res.redirect(`${back}?google=${q.error === "access_denied" ? "denied" : "error"}`);
-    return;
-  }
+  if (q.error || !q.code) return `${back}?google=${q.error === "access_denied" ? "denied" : "error"}`;
   try {
     const provider = calendar();
     if (!provider) throw new Error("Google isn't configured");
@@ -84,9 +78,22 @@ integrationsCallbackRouter.get("/integrations/google/callback", limiter("google-
       status: "connected",
       connectedAt: now(),
     });
-    res.redirect(`${back}?google=connected`);
+    return `${back}?google=connected`;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : "unknown" }, "google oauth exchange failed");
-    res.redirect(`${back}?google=error`);
+    return `${back}?google=error`;
   }
+}
+
+/** Google redirects here when GOOGLE_OAUTH_REDIRECT_URI points at the API itself. */
+integrationsCallbackRouter.get("/integrations/google/callback", limiter("google-callback", 30), async (req, res) => {
+  res.redirect(await finishGoogleConnect(parse(callbackQuery, req.query)));
+});
+
+/**
+ * When GOOGLE_OAUTH_REDIRECT_URI points at the website's /google/callback page
+ * (the hosted site, with the API behind a tunnel), that page posts Google's answer here.
+ */
+integrationsCallbackRouter.post("/integrations/google/complete", limiter("google-callback", 30), async (req, res) => {
+  res.json({ redirect: await finishGoogleConnect(parse(callbackQuery, req.body)) });
 });

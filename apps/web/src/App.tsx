@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/auth/LoginPage";
 import { FinishSignupPage, SignupPage } from "./pages/auth/SignupPage";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { ConsentPage } from "./pages/auth/ConsentPage";
+import { GoogleCallbackPage } from "./pages/GoogleCallbackPage";
 
 // §14 Performance: split the bundle by role so students never download admin screens.
 const StudentApp = lazy(() => import("./roles/student/StudentApp"));
@@ -33,6 +34,7 @@ export function App() {
           <Route path="/signup/finish" element={<FinishSignupPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/consent" element={<ConsentPage />} />
+          <Route path="/google/callback" element={<GoogleCallbackPage />} />
           <Route path="/join/:code" element={<JoinRedirect />} />
           <Route path="/join" element={<Navigate to="/s/join" replace />} />
           <Route
