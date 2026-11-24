@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { PLANS, type UserDto } from "@nihongo/shared";
+import { PLANS, type SchoolPersonDto, type UserDto } from "@nihongo/shared";
 import { api, ApiError, errorMessage } from "../../lib/api";
 import { auth } from "../../lib/firebase";
 import { useMe } from "../../lib/auth";
@@ -36,13 +36,13 @@ export function PeoplePage() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<UserDto | null>(null);
-  const [removing, setRemoving] = useState<UserDto | null>(null);
+  const [removing, setRemoving] = useState<SchoolPersonDto | null>(null);
   const qc = useQueryClient();
   const toast = useToast();
 
   const q = useQuery({
     queryKey: ["school-users", schoolId, tab],
-    queryFn: () => api<{ items: UserDto[] }>(`/schools/${schoolId}/users`, { query: { role: tab } }),
+    queryFn: () => api<{ items: SchoolPersonDto[] }>(`/schools/${schoolId}/users`, { query: { role: tab } }),
   });
 
   const remove = useMutation({
@@ -128,6 +128,7 @@ export function PeoplePage() {
             <tr>
               <th scope="col">Name</th>
               <th scope="col">Email</th>
+              {tab === "student" ? <th scope="col">Classes</th> : null}
               <th scope="col">Status</th>
               <th scope="col">Added</th>
               <th scope="col">
@@ -138,16 +139,22 @@ export function PeoplePage() {
           <tbody>
             {items.map((u) => (
               <tr key={u.uid}>
-                <td className="font-medium">{u.name}</td>
+                <td className="font-medium">
+                  {u.name}
+                  {u.otherSchool ? <span className="block text-xs font-normal text-ink-2">Account from another school</span> : null}
+                </td>
                 <td className="text-ink-2">{u.email}</td>
+                {tab === "student" ? <td className="text-ink-2">{u.classes.length ? u.classes.map((c) => c.name).join(", ") : "No class now"}</td> : null}
                 <td>{u.disabled ? <Badge>Removed</Badge> : u.privacyConsentAt ? <Badge tone="success">Active</Badge> : <Badge tone="info">Invited</Badge>}</td>
                 <td className="whitespace-nowrap text-ink-2">{formatDate(u.createdAt)}</td>
                 <td className="whitespace-nowrap text-right">
                   {!u.disabled ? (
                     <>
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>
-                        Edit
-                      </Button>
+                      {!u.otherSchool ? (
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>
+                          Edit
+                        </Button>
+                      ) : null}
                       {!u.privacyConsentAt ? (
                         <Button
                           size="sm"
@@ -194,7 +201,11 @@ export function PeoplePage() {
           </>
         }
       >
-        <p>They won't be able to sign in, and they'll leave their classes. Removing a teacher frees their slot. Past results and attendance stay in your reports.</p>
+        {removing?.otherSchool ? (
+          <p>They'll leave your school's classes. Their account belongs to another school, so they can still sign in there. Past results and attendance stay in your reports.</p>
+        ) : (
+          <p>They won't be able to sign in, and they'll leave their classes. Removing a teacher frees their slot. Past results and attendance stay in your reports.</p>
+        )}
       </Dialog>
     </>
   );

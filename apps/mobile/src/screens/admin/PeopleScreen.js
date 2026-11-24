@@ -151,15 +151,19 @@ export function PeopleScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowName}>{u.name}</Text>
                   <Text style={text.small}>{u.email}</Text>
+                  {u.otherSchool ? <Text style={text.small}>Account from another school</Text> : null}
+                  {tab === "student" ? <Text style={text.small}>{u.classes?.length ? `Classes: ${u.classes.map((c) => c.name).join(", ")}` : "No class now"}</Text> : null}
                 </View>
                 {u.disabled ? <Badge>Removed</Badge> : u.privacyConsentAt ? <Badge tone="success">Active</Badge> : <Badge tone="info">Invited</Badge>}
               </View>
               <Text style={[text.small, { marginTop: spacing.xs }]}>Added {formatDate(u.createdAt)}</Text>
               {!u.disabled ? (
                 <View style={styles.actions}>
-                  <Pressable style={styles.ghost} onPress={() => setEditing(u)} accessibilityRole="button" accessibilityLabel={`Edit ${u.name}`}>
-                    <Text style={styles.ghostText}>Edit</Text>
-                  </Pressable>
+                  {!u.otherSchool ? (
+                    <Pressable style={styles.ghost} onPress={() => setEditing(u)} accessibilityRole="button" accessibilityLabel={`Edit ${u.name}`}>
+                      <Text style={styles.ghostText}>Edit</Text>
+                    </Pressable>
+                  ) : null}
                   {!u.privacyConsentAt ? (
                     <Pressable style={styles.ghost} onPress={() => void resendInvite(u)} accessibilityRole="button" accessibilityLabel={`Resend invite to ${u.name}`}>
                       <Text style={styles.ghostText}>Resend invite</Text>
@@ -185,7 +189,11 @@ export function PeopleScreen({ navigation }) {
       {editing ? <EditPersonDialog person={editing} onClose={() => setEditing(null)} /> : null}
 
       <Sheet open={!!removing} onClose={() => !remove.isPending && setRemoving(null)} title={`Remove ${removing?.name ?? ""}?`}>
-        <Text style={text.body}>They won't be able to sign in, and they'll leave their classes. Removing a teacher frees their slot. Past results and attendance stay in your reports.</Text>
+        <Text style={text.body}>
+          {removing?.otherSchool
+            ? "They'll leave your school's classes. Their account belongs to another school, so they can still sign in there. Past results and attendance stay in your reports."
+            : "They won't be able to sign in, and they'll leave their classes. Removing a teacher frees their slot. Past results and attendance stay in your reports."}
+        </Text>
         <View style={styles.sheetActions}>
           <Pressable style={[styles.btn, styles.btnSecondary]} onPress={() => setRemoving(null)} disabled={remove.isPending} accessibilityRole="button">
             <Text style={styles.btnSecondaryText}>Cancel</Text>

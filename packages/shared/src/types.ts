@@ -42,6 +42,14 @@ export interface UserDto {
   createdAt: string;
 }
 
+/** A row on the School Admin's People list. */
+export interface SchoolPersonDto extends UserDto {
+  /** Students: this school's classes they're enrolled in now (empty for teachers). */
+  classes: { id: string; name: string }[];
+  /** A student in one of this school's classes whose account belongs to another school. */
+  otherSchool: boolean;
+}
+
 export interface MeDto extends UserDto {
   school: SchoolDto | null;
   google: { status: "connected" | "needs_reconnect"; googleEmail: string } | null;

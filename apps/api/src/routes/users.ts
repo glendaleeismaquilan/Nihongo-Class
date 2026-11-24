@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addSchoolAdminSchema, createSchoolSchema, createSchoolUserSchema, patchUserSchema, schoolPatchSchema, type Role, type SchoolSummaryDto } from "@nihongo/shared";
+import { addSchoolAdminSchema, createSchoolSchema, createSchoolUserSchema, patchUserSchema, schoolPatchSchema, type Role, type SchoolPersonDto, type SchoolSummaryDto } from "@nihongo/shared";
 import { z } from "zod";
 import { env } from "../env";
 import { db, adminAuth } from "../firebase";
@@ -58,12 +58,40 @@ async function createProfile(email: string, name: string, profile: Omit<UserDoc,
 
 usersRouter.get("/schools/:schoolId/users", requireRole("school_admin"), async (req, res) => {
   const u = currentUser(req);
-  assertSchoolAdmin(u, params(req).schoolId);
+  const { schoolId } = params(req);
+  assertSchoolAdmin(u, schoolId);
   const q = parse(listQuery, req.query);
-  let query = col.users().where("schoolId", "==", params(req).schoolId);
+  let query = col.users().where("schoolId", "==", schoolId);
   if (q.role) query = query.where("role", "==", q.role);
   const snap = await query.limit(2000).get();
-  let items = snap.docs.map((d) => userDto(d.id, d.data()));
+  const people = new Map<string, UserDoc>(snap.docs.map((d) => [d.id, d.data()]));
+  const classesOf = new Map<string, { id: string; name: string }[]>();
+  if (!q.role || q.role === "student") {
+    // Everyone enrolled in one of this school's classes is listed too, even when their
+    // account was first linked to another school (or to none) before they joined.
+    const [enrolled, classes] = await Promise.all([
+      col.enrollments().where("schoolId", "==", schoolId).where("status", "==", "active").limit(5000).get(),
+      col.classes().where("schoolId", "==", schoolId).get(),
+    ]);
+    const names = new Map(classes.docs.map((d) => [d.id, d.data().name]));
+    for (const e of enrolled.docs) {
+      const { uid, classId } = e.data();
+      classesOf.set(uid, [...(classesOf.get(uid) ?? []), { id: classId, name: names.get(classId) ?? "Class" }]);
+    }
+    const missing = [...classesOf.keys()].filter((uid) => !people.has(uid));
+    for (let i = 0; i < missing.length; i += 300) {
+      const docs = await db.getAll(...missing.slice(i, i + 300).map((uid) => col.users().doc(uid)));
+      for (const d of docs) {
+        const doc = d.data() as UserDoc | undefined;
+        if (doc?.role === "student") people.set(d.id, doc);
+      }
+    }
+  }
+  let items: SchoolPersonDto[] = [...people].map(([uid, d]) => ({
+    ...userDto(uid, d),
+    classes: (classesOf.get(uid) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
+    otherSchool: d.role === "student" && !!d.schoolId && d.schoolId !== schoolId,
+  }));
   if (q.q) {
     const needle = q.q.toLowerCase();
     items = items.filter((i) => i.name.toLowerCase().includes(needle) || i.email.includes(needle));
@@ -97,19 +125,33 @@ usersRouter.post("/schools/:schoolId/users", requireRole("school_admin"), async 
   res.status(201).json({ user: userDto(uid, doc), sendPasswordReset: true, seats: await seatsFor(schoolId) });
 });
 
-async function loadSchoolMember(adminSchoolId: string | null, uid: string) {
+/**
+ * Someone the School Admin may manage: a member of the school, or a student in one
+ * of its classes. A student with no school yet joins this one. A student whose
+ * account belongs to another school is a guest: they can only leave this school's classes.
+ */
+async function loadSchoolPerson(adminSchoolId: string | null, uid: string) {
   const snap = await col.users().doc(uid).get();
   if (!snap.exists) throw notFound("Person not found.");
   const doc = snap.data()!;
-  if (!adminSchoolId || doc.schoolId !== adminSchoolId) throw forbidden("This person isn't in your school.", "wrong_school");
-  return doc;
+  if (adminSchoolId && doc.schoolId === adminSchoolId) return { doc, guest: false };
+  if (adminSchoolId && doc.role === "student") {
+    const active = await col.enrollments().where("uid", "==", uid).where("status", "==", "active").get();
+    if (active.docs.some((d) => d.data().schoolId === adminSchoolId)) {
+      if (doc.schoolId) return { doc, guest: true };
+      await col.users().doc(uid).update({ schoolId: adminSchoolId });
+      return { doc: { ...doc, schoolId: adminSchoolId }, guest: false };
+    }
+  }
+  throw forbidden("This person isn't in your school.", "wrong_school");
 }
 
 usersRouter.patch("/users/:uid", requireRole("school_admin"), async (req, res) => {
   const u = currentUser(req);
   const { uid } = params(req);
   const body = parse(patchUserSchema, req.body);
-  const target = await loadSchoolMember(u.schoolId, uid);
+  const { doc: target, guest } = await loadSchoolPerson(u.schoolId, uid);
+  if (guest) throw forbidden("This student's account belongs to another school. You can remove them from your classes.", "other_school");
   const editableRoles: Role[] = ["teacher", "student"];
   if ((body.role || body.disabled !== undefined) && !editableRoles.includes(target.role)) {
     throw forbidden("Only teacher and student accounts can be changed here.");
@@ -142,7 +184,17 @@ usersRouter.patch("/users/:uid", requireRole("school_admin"), async (req, res) =
 usersRouter.delete("/users/:uid", requireRole("school_admin"), async (req, res) => {
   const u = currentUser(req);
   const { uid } = params(req);
-  const target = await loadSchoolMember(u.schoolId, uid);
+  const { doc: target, guest } = await loadSchoolPerson(u.schoolId, uid);
+  if (guest) {
+    // Their account belongs to another school: they only leave this school's classes.
+    const mine = await col.enrollments().where("uid", "==", uid).where("status", "==", "active").get();
+    const batch = db.batch();
+    mine.docs.filter((d) => d.data().schoolId === u.schoolId).forEach((d) => batch.update(d.ref, { status: "removed" }));
+    await batch.commit();
+    await audit({ actorUid: u.uid, action: "user.removed_from_school_classes", targetType: "user", targetId: uid, schoolId: u.schoolId });
+    res.status(204).end();
+    return;
+  }
   if (!["teacher", "student"].includes(target.role)) throw forbidden("Only teacher and student accounts can be removed here.");
   if (target.role === "teacher") {
     const assigned = await col.classes().where("teacherIds", "array-contains", uid).limit(1).get();
