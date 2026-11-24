@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { LessonDto, LiveSessionDto, MaterialAttachmentDto, MaterialDto } from "@nihongo/shared";
-import { api } from "../../lib/api";
+import { api, openableUrl } from "../../lib/api";
 
 export const materialKeys = {
   list: (classId: string) => ["class", classId, "materials"] as const,
@@ -33,9 +33,11 @@ export async function fileTicket(materialId: string, att: MaterialAttachmentDto,
 
 export const canPreview = (att: MaterialAttachmentDto) => att.kind === "file" && /^(application\/pdf|image\/(jpeg|png|webp))$/.test(att.mimeType ?? "");
 
-export function downloadUrl(url: string) {
+export async function downloadUrl(url: string) {
+  const file = await openableUrl(url);
   const a = document.createElement("a");
-  a.href = url;
+  a.href = file.url;
+  if (file.filename) a.download = file.filename;
   a.rel = "noopener";
   document.body.appendChild(a);
   a.click();

@@ -15,7 +15,7 @@ export function createApp() {
   app.use(helmet({ crossOriginResourcePolicy: { policy: "same-site" } }));
   const origins = [env.APP_URL, ...(env.CORS_EXTRA_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean)];
   // The web app runs on another origin, so Content-Disposition must be exposed for downloads (templates, exports) to keep their file names.
-  app.use(cors({ origin: origins, allowedHeaders: ["Authorization", "Content-Type"], exposedHeaders: ["Content-Disposition"], maxAge: 600 }));
+  app.use(cors({ origin: origins, allowedHeaders: ["Authorization", "Content-Type", "ngrok-skip-browser-warning"], exposedHeaders: ["Content-Disposition"], maxAge: 600 }));
   app.use(pinoHttp({ logger, autoLogging: env.NODE_ENV !== "test" }));
 
   // The PayMongo webhook needs the raw body for its signature, so it is

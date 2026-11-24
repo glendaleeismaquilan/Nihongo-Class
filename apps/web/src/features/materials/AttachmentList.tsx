@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MaterialAttachmentDto } from "@nihongo/shared";
-import { errorMessage } from "../../lib/api";
+import { errorMessage, openableUrl } from "../../lib/api";
 import { formatBytes } from "../../lib/format";
 import { Button, ButtonAnchor, Dialog, Icon, Loading, useToast } from "../../components/ui";
 import { canPreview, downloadUrl, fileTicket } from "./materialsApi";
@@ -16,8 +16,8 @@ export function AttachmentList({ materialId, attachments, onOpen, removable, onR
     try {
       const t = await fileTicket(materialId, att, disposition);
       onOpen?.();
-      if (disposition === "inline" && t.disposition === "inline") setPreview({ att, url: t.url });
-      else downloadUrl(t.url);
+      if (disposition === "inline" && t.disposition === "inline") setPreview({ att, url: (await openableUrl(t.url)).url });
+      else await downloadUrl(t.url);
     } catch (err) {
       toast(errorMessage(err), "danger");
     } finally {

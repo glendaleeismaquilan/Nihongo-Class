@@ -57,6 +57,20 @@ Tests never touch a real Firebase project, Google account, or PayMongo key: Goog
 | `node scripts/build-indexes.mjs` | Regenerates `firestore.indexes.json` after adding a query |
 | `node apps/web/scripts/make-icons.mjs` | Rebuilds the logo sizes, favicon, and install icons from `apps/web/brand/logo-source.webp` |
 | `POST /api/jobs/:name` | Runs `complete-sessions`, `session-reminders`, or `expire-payments` (needs `X-Job-Secret`; node-cron runs them in development) |
+| `npm run tunnel` | Opens the ngrok tunnel to the local API on the app's `apiUrl` (see below) |
+
+### The Android app from any network (ngrok)
+
+An APK built with the laptop's LAN address works only on that Wi-Fi. With a fixed ngrok address, the phone reaches the laptop's API from any network (school Wi-Fi, mobile data), and the laptop's IP can change freely.
+
+1. Create a free account at https://ngrok.com. Its dashboard (**Domains**) gives one free static address (the "dev domain"), such as `your-name.ngrok-free.dev`. This project's is `unrigged-fidgety-rescuer.ngrok-free.dev`.
+2. Install ngrok (`winget install ngrok.ngrok`), open a new terminal, and run `ngrok config add-authtoken <your token>` (the token is in the dashboard; keep it out of commits).
+3. Set `expo.extra.apiUrl` in `apps/mobile/app.json` to `https://your-name.ngrok-free.dev` and rebuild the APK once (`npx eas-cli build --platform android --profile preview` in `apps/mobile`).
+4. Whenever the app is used: run `npm run dev`, then `npm run tunnel` in a second window, and keep both open.
+
+The laptop must be on and online. ngrok's free plan shows its own warning page once when a file (a material or a My Drive file) opens in the phone's browser; tap **Visit Site**. The app's own requests and calls aren't affected. If a network blocks ngrok, give the laptop a phone hotspot instead.
+
+The website is hosted the same way: Firebase Hosting serves it at https://nihongoclass-6342b.web.app (`npm run build -w @nihongo/web`, then `firebase deploy --only hosting --project prod`), built with `VITE_API_URL` set to the ngrok address in `apps/web/.env.production`. Its requests send `ngrok-skip-browser-warning` and file links are fetched with it, so ngrok's warning page never shows there. In `apps/api/.env`, `APP_URL` is the hosted address (`localhost:5173` stays in `CORS_EXTRA_ORIGINS`), and `GOOGLE_OAUTH_REDIRECT_URI` can be `https://nihongoclass-6342b.web.app/google/callback`, a page that finishes Connect Google through the API from any device (add it to the OAuth client's redirect URIs).
 
 ## 2. Firebase project
 

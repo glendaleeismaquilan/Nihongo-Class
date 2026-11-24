@@ -15,6 +15,7 @@
     "setup": "node scripts/init-env.mjs",
     "seed": "npm run seed -w @nihongo/api --",
     "create-admin": "npm run create-admin -w @nihongo/api --",
+    "tunnel": "node scripts/tunnel.mjs",
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @nihongo/api\" \"npm run dev -w @nihongo/web\"",
     "build": "npm run build -w @nihongo/api && npm run build -w @nihongo/web",
     "typecheck": "npm run typecheck --workspaces --if-present",

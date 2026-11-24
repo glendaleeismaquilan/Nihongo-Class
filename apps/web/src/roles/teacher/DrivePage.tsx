@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MATERIAL_FILE_TYPES, type DriveItemDto, type DriveListingDto } from "@nihongo/shared";
-import { api, ApiError, errorMessage, upload } from "../../lib/api";
+import { api, ApiError, errorMessage, openableUrl, upload } from "../../lib/api";
 import { formatBytes, formatDate } from "../../lib/format";
 import { Alert, Button, ButtonLink, DataTable, Dialog, EmptyState, ErrorState, Icon, IconButton, Loading, PageHeader, Panel, ProgressBar, SelectField, TextField, useToast } from "../../components/ui";
 import { FileDrop } from "../../components/FileDrop";
@@ -53,8 +53,8 @@ export function DrivePage() {
   async function openFile(item: DriveItemDto, disposition: "inline" | "attachment") {
     try {
       const t = await api<{ url: string; disposition: string }>(`/drive/${item.id}/ticket`, { body: { disposition } });
-      if (t.disposition === "inline") window.open(t.url, "_blank", "noopener");
-      else downloadUrl(t.url);
+      if (t.disposition === "inline") window.open((await openableUrl(t.url)).url, "_blank", "noopener");
+      else await downloadUrl(t.url);
     } catch (err) {
       toast(errorMessage(err), "danger");
     }

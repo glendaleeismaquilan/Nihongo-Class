@@ -20,9 +20,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * ngrok's free plan answers browser requests with a "You are about to visit" page
+ * instead of the API's JSON unless this header is sent. The hosted website reaches
+ * the laptop's API through the same ngrok address the Android app uses.
+ */
+export const TUNNEL_HEADERS: Record<string, string> = /\.ngrok(-free)?\.(app|dev|io)$/i.test(new URL(API_URL).hostname) ? { "ngrok-skip-browser-warning": "1" } : {};
+
 async function authHeader(): Promise<Record<string, string>> {
   const token = await auth.currentUser?.getIdToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { ...TUNNEL_HEADERS, Authorization: `Bearer ${token}` } : { ...TUNNEL_HEADERS };
 }
 
 async function toError(res: Response): Promise<ApiError> {
@@ -73,10 +80,26 @@ export async function apiBlob(path: string, opts: RequestOptions = {}): Promise<
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
   if (!res.ok) throw await toError(res);
+  return { blob: await res.blob(), filename: filenameOf(res) };
+}
+
+function filenameOf(res: Response): string | null {
   const cd = res.headers.get("Content-Disposition") ?? "";
   const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
   const plain = /filename="([^"]+)"/i.exec(cd);
-  return { blob: await res.blob(), filename: star ? decodeURIComponent(star[1]) : (plain?.[1] ?? null) };
+  return star ? decodeURIComponent(star[1]) : (plain?.[1] ?? null);
+}
+
+/**
+ * A file link from the API (a short-lived ticket URL) that the browser can open.
+ * Through the ngrok tunnel a plain link would show ngrok's warning page, so the file
+ * is fetched with the skip header and handed over as a local blob URL instead.
+ */
+export async function openableUrl(url: string): Promise<{ url: string; filename: string | null }> {
+  if (!TUNNEL_HEADERS["ngrok-skip-browser-warning"] || !url.startsWith(API_URL)) return { url, filename: null };
+  const res = await fetch(url, { headers: TUNNEL_HEADERS });
+  if (!res.ok) throw await toError(res);
+  return { url: URL.createObjectURL(await res.blob()), filename: filenameOf(res) };
 }
 
 /** Multipart upload with a progress callback (FR-3.12.8). One file per request. */

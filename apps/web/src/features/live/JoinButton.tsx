@@ -1,5 +1,5 @@
 import { JOIN_OPENS_MINUTES_BEFORE, type LiveSessionDto } from "@nihongo/shared";
-import { apiUrl } from "../../lib/api";
+import { TUNNEL_HEADERS, apiUrl } from "../../lib/api";
 import { auth } from "../../lib/firebase";
 import { formatTime } from "../../lib/format";
 import { useNow } from "../../lib/useNow";
@@ -36,7 +36,7 @@ export function JoinButton({ session, size = "md" }: { session: LiveSessionDto; 
       onClick={() => {
         window.open(session.meetUrl, "_blank", "noopener,noreferrer");
         void auth.currentUser?.getIdToken().then((token) =>
-          fetch(apiUrl(`/sessions/${session.id}/check-in`), { method: "POST", keepalive: true, headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined),
+          fetch(apiUrl(`/sessions/${session.id}/check-in`), { method: "POST", keepalive: true, headers: { ...TUNNEL_HEADERS, Authorization: `Bearer ${token}` } }).catch(() => undefined),
         );
       }}
     >
