@@ -337,6 +337,15 @@ export interface AuditLogDoc {
   createdAt: Timestamp;
 }
 
+/** A phone that receives push notifications for a user. Doc id: sha256 of the token. */
+export interface PushTokenDoc {
+  uid: string;
+  token: string;
+  platform: "android" | "ios";
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 const typed = <T>(name: string) =>
   db.collection(name) as FirebaseFirestore.CollectionReference<T, FirebaseFirestore.DocumentData>;
 
@@ -362,6 +371,7 @@ export const col = {
   integrations: () => typed<IntegrationDoc>("integrations"),
   oauthStates: () => typed<OAuthStateDoc>("oauthStates"),
   notifications: () => typed<NotificationDoc>("notifications"),
+  pushTokens: () => typed<PushTokenDoc>("pushTokens"),
   auditLogs: () => typed<AuditLogDoc>("auditLogs"),
   calls: () => typed<CallDoc>("calls"),
   driveItems: () => typed<DriveItemDoc>("driveItems"),

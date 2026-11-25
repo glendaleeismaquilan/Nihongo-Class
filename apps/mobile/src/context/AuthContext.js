@@ -8,6 +8,7 @@ import { onIdTokenChanged, signOut as fbSignOut } from "firebase/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { auth } from "../config/firebase";
 import { api, ApiError, setOnUnauthorized } from "../lib/api";
+import { unregisterFromPush } from "../lib/push";
 import { useToast } from "../components/Toast";
 
 const AuthContext = createContext(null);
@@ -63,6 +64,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Stop pushes to this phone while the API still accepts this user.
+    await unregisterFromPush();
     await fbSignOut(auth);
     qc.clear();
   }, [qc]);

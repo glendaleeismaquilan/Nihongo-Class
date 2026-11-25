@@ -4,7 +4,7 @@
 // sign out; no privacy consent yet → consent; student without a level → choose
 // level; otherwise the role's tabs.
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { LoginScreen } from "../screens/LoginScreen";
@@ -15,6 +15,7 @@ import { ResetPasswordScreen } from "../screens/auth/ResetPasswordScreen";
 import { ChooseLevelScreen } from "../screens/auth/ChooseLevelScreen";
 import { VerifyEmailScreen, needsEmailVerification } from "../screens/auth/VerifyEmailScreen";
 import { SplashScreen } from "../screens/SplashScreen";
+import { usePushNotifications } from "../lib/push";
 import { StudentTabs } from "./StudentTabs";
 import { TeacherTabs } from "./TeacherTabs";
 import { SchoolAdminTabs } from "./SchoolAdminTabs";
@@ -55,8 +56,13 @@ const errStyles = StyleSheet.create({
   secondaryText: { color: colors.ai, fontWeight: "600" },
 });
 
+const navigationRef = createNavigationContainerRef();
+
 export function AppNavigator() {
   const { firebaseUser, initializing, registering, meLoading, me, meError } = useAuth();
+  // Phone notifications start once the person is fully signed in (verified, consented).
+  const signedIn = !!firebaseUser && !needsEmailVerification(firebaseUser) && !!me?.privacyConsentAt;
+  usePushNotifications(signedIn ? me : null, navigationRef);
 
   let screens;
   if (initializing) {
@@ -87,7 +93,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>{screens}</Stack.Navigator>
     </NavigationContainer>
   );

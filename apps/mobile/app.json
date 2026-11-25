@@ -37,11 +37,20 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WAKE_LOCK",
         "android.permission.BLUETOOTH"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "@config-plugins/react-native-webrtc",
-      "./plugins/withApiNetworkSecurity"
+      "./plugins/withApiNetworkSecurity",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#C23B22",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "extra": {
       "apiUrl": "https://unrigged-fidgety-rescuer.ngrok-free.dev",

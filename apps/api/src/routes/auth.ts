@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { mePatchSchema, registerSchema, type MeDto } from "@nihongo/shared";
+import { z } from "zod";
 import { env } from "../env";
 import { db } from "../firebase";
 import { col, type UserDoc } from "../db";
 import { currentUser, verifyToken } from "../lib/auth";
 import { userDto, schoolDto } from "../lib/dto";
+import { pushTokenId } from "../lib/push";
 import { limiter } from "../lib/rateLimit";
 import { now } from "../lib/time";
 import { parse } from "../lib/validate";
@@ -69,4 +71,27 @@ meRouter.patch("/me", async (req, res) => {
   if (Object.keys(update).length) await col.users().doc(u.uid).update(update);
   const snap = await col.users().doc(u.uid).get();
   res.json(userDto(u.uid, snap.data()!));
+});
+
+// ---------- Phone push notifications (lib/push.ts) ----------
+
+const pushTokenSchema = z.object({ token: z.string().min(10).max(4096), platform: z.enum(["android", "ios"]).default("android") });
+
+/** The app registers this phone after sign-in; a phone moves to whoever signs in on it last. */
+meRouter.post("/me/push-tokens", limiter("push-token", 30), async (req, res) => {
+  const u = currentUser(req);
+  const body = parse(pushTokenSchema, req.body);
+  const ref = col.pushTokens().doc(pushTokenId(body.token));
+  const existing = await ref.get();
+  await ref.set({ uid: u.uid, token: body.token, platform: body.platform, createdAt: existing.data()?.createdAt ?? now(), updatedAt: now() });
+  res.status(204).end();
+});
+
+/** Signing out stops pushes to this phone. */
+meRouter.delete("/me/push-tokens", async (req, res) => {
+  const u = currentUser(req);
+  const body = parse(pushTokenSchema.pick({ token: true }), req.body);
+  const ref = col.pushTokens().doc(pushTokenId(body.token));
+  if ((await ref.get()).data()?.uid === u.uid) await ref.delete();
+  res.status(204).end();
 });

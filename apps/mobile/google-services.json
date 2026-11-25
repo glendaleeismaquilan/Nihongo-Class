@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1034700800367",
+    "project_id": "nihongoclass-6342b",
+    "storage_bucket": "nihongoclass-6342b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1034700800367:android:14449c4166ae84e900a89a",
+        "android_client_info": {
+          "package_name": "com.nihongoclass.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1034700800367-0t9fmuoie27ebb1053csjmeak806pnvr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nihongoclass.mobile",
+            "certificate_hash": "4adbefa19409e0d36e0656e57f8f72b71cb892c5"
+          }
+        },
+        {
+          "client_id": "1034700800367-v396len1q175s15jt7661kp8kgrl38dp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHv0sjwPJ2OPIYhY6-XN79cqV9IUkDtsg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1034700800367-r4vmojhpk2ak8gr8g5524fnm97n66803.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
