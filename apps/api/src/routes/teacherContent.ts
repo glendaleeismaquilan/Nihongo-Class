@@ -20,6 +20,7 @@ import { sendDownload, XLSX_MIME } from "../lib/http";
 import { now } from "../lib/time";
 import { readUpload, requireFile, uploadFiles } from "../lib/upload";
 import { params, parse } from "../lib/validate";
+import { notifyNewContent } from "../services/contentNotify";
 
 export const teacherContentRouter = Router();
 
@@ -29,6 +30,7 @@ const xlsxUpload = uploadFiles("file", { maxBytes: LIMITS.importMaxBytes });
 async function assertLessonInClass(lessonId: string, classId: string) {
   const snap = await col.lessons().doc(lessonId).get();
   if (!snap.exists || snap.data()!.classId !== classId) throw badRequest("Choose a lesson from this class.", { issues: [{ path: "lessonId", message: "Choose a lesson from this class." }] }, "invalid_lesson");
+  return snap.data()!;
 }
 
 /** Writes in batches of at most 500 operations (§7.4 Excel rules). */
@@ -82,10 +84,11 @@ teacherContentRouter.post("/classes/:id/flashcards", staffRoles, async (req, res
   const { id } = params(req);
   const body = parse(teacherFlashcardSchema, req.body);
   await assertClassAccess(u, id, "staff", { write: true });
-  await assertLessonInClass(body.lessonId, id);
+  const lesson = await assertLessonInClass(body.lessonId, id);
   const ref = col.flashcards().doc();
   const doc = teacherFlashcard(u, id, body);
   await ref.set(doc);
+  await notifyNewContent(id, { type: "flashcards.added", heading: "New flashcards", body: `${lesson.title}: ${doc.term}` }, { key: `flashcards_${body.lessonId}` });
   res.status(201).json(flashcardDto(ref.id, doc));
 });
 
@@ -95,12 +98,16 @@ teacherContentRouter.post("/classes/:id/flashcards/import", staffRoles, xlsxUplo
   const { id } = params(req);
   const { lessonId } = parse(z.object({ lessonId: z.string().min(1).max(128) }), req.body);
   await assertClassAccess(u, id, "staff", { write: true });
-  await assertLessonInClass(lessonId, id);
+  const lesson = await assertLessonInClass(lessonId, id);
   const file = requireFile(req, "an .xlsx file");
   const rows = readSheet(await readUpload(file), flashcardColumns.required, flashcardColumns.optional);
   const { valid, errors } = parseFlashcardRows(rows, false);
   const refs = valid.map(() => col.flashcards().doc());
   await commitInBatches(valid.map((row, i) => (b) => b.set(refs[i], teacherFlashcard(u, id, { lessonId, ...row }))));
+  if (valid.length) {
+    const count = valid.length === 1 ? "1 new flashcard" : `${valid.length} new flashcards`;
+    await notifyNewContent(id, { type: "flashcards.added", heading: "New flashcards", body: `${lesson.title}: ${count}` }, { key: `flashcards_${lessonId}`, always: true });
+  }
   const result: ImportResultDto = { imported: valid.length, errors, ids: refs.map((r) => r.id) };
   if (errors.length) result.errorReport = errorReport(errors, rows);
   res.status(valid.length ? 201 : 200).json(result);
@@ -173,10 +180,11 @@ teacherContentRouter.post("/classes/:id/quizzes", staffRoles, async (req, res) =
   const { id } = params(req);
   const body = parse(teacherQuizSchema, req.body);
   await assertClassAccess(u, id, "staff", { write: true });
-  await assertLessonInClass(body.lessonId, id);
+  const lesson = await assertLessonInClass(body.lessonId, id);
   const ref = col.quizzes().doc();
   const doc = teacherQuiz(u, id, body);
   await ref.set(doc);
+  await notifyNewContent(id, { type: "quiz.created", heading: "New quiz", body: `${lesson.title}: ${doc.title}` });
   res.status(201).json(quizDto(ref.id, doc));
 });
 
@@ -189,7 +197,7 @@ teacherContentRouter.post("/classes/:id/quizzes/import", staffRoles, xlsxUpload,
     req.body,
   );
   await assertClassAccess(u, id, "staff", { write: true });
-  await assertLessonInClass(form.lessonId, id);
+  const lesson = await assertLessonInClass(form.lessonId, id);
   const file = requireFile(req, "an .xlsx file");
   const rows = readSheet(await readUpload(file), quizColumns.required, quizColumns.optional);
   const { valid, errors } = parseQuizRows(rows, false);
@@ -199,6 +207,7 @@ teacherContentRouter.post("/classes/:id/quizzes/import", staffRoles, xlsxUpload,
     await ref.set(teacherQuiz(u, id, { lessonId: form.lessonId, title: form.title, passingScorePct: form.passingScorePct, questions: valid }));
     result.quizId = ref.id;
     result.ids = [ref.id];
+    await notifyNewContent(id, { type: "quiz.created", heading: "New quiz", body: `${lesson.title}: ${form.title}` });
   }
   if (errors.length) result.errorReport = errorReport(errors, rows);
   res.status(valid.length ? 201 : 200).json(result);

@@ -372,6 +372,8 @@ export const col = {
   oauthStates: () => typed<OAuthStateDoc>("oauthStates"),
   notifications: () => typed<NotificationDoc>("notifications"),
   pushTokens: () => typed<PushTokenDoc>("pushTokens"),
+  /** When a class last notified about a burst of single additions (services/contentNotify.ts). */
+  notifyBursts: () => typed<{ lastAt: Timestamp }>("notifyBursts"),
   auditLogs: () => typed<AuditLogDoc>("auditLogs"),
   calls: () => typed<CallDoc>("calls"),
   driveItems: () => typed<DriveItemDoc>("driveItems"),

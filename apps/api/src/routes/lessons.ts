@@ -7,6 +7,7 @@ import { currentUser, requireRole } from "../lib/auth";
 import { lessonDto } from "../lib/contentDto";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { params, parse } from "../lib/validate";
+import { notifyNewContent } from "../services/contentNotify";
 
 export const lessonsRouter = Router();
 
@@ -46,6 +47,7 @@ lessonsRouter.post("/classes/:id/lessons", requireRole("teacher", "school_admin"
   const ref = col.lessons().doc();
   const doc: LessonDoc = { classId: id, title: body.title, description: body.description ?? null, order: docs.length ? docs[docs.length - 1].data().order + 1 : 0 };
   await ref.set(doc);
+  await notifyNewContent(id, { type: "lesson.created", heading: "New lesson", body: doc.title });
   res.status(201).json(lessonDto(ref.id, doc));
 });
 
