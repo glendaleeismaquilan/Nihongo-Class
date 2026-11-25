@@ -43,7 +43,7 @@ export function MaterialsTab({ classId }) {
   async function openFile(m, a, preview) {
     try {
       const ticket = `/materials/${m.id}/attachments/${a.id}/ticket`;
-      await (preview ? openTicket(ticket, a.mimeType) : downloadTicket(ticket));
+      await (preview ? openTicket(ticket, a.mimeType, a.name) : downloadTicket(ticket));
       opened(m);
     } catch (err) {
       toast.error(errorMessage(err));

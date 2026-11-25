@@ -67,7 +67,7 @@ export function MyDriveScreen({ navigation }) {
   async function openFile(item, download = false) {
     try {
       if (download) await downloadTicket(`/drive/${item.id}/ticket`);
-      else await openTicket(`/drive/${item.id}/ticket`, item.mimeType);
+      else await openTicket(`/drive/${item.id}/ticket`, item.mimeType, item.name);
     } catch (err) {
       toast.error(errorMessage(err));
     }

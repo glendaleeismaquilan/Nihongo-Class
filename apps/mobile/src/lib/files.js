@@ -1,15 +1,22 @@
 // Opens a private file (class material attachment or My Drive file) through a
 // short-lived ticket, like the web app's AttachmentList and DrivePage: Preview
-// opens PDFs and images for viewing, Download always asks for an attachment.
+// shows PDFs and images inside the app (components/FilePreview.js), Download
+// always asks the browser for an attachment.
 // The ticket URL points at the API host this phone used, so it opens from the phone.
-import { Linking } from "react-native";
+import { Linking, Platform } from "react-native";
 import { api } from "./api";
+import { filePreviewAvailable, showFilePreview } from "../components/FilePreview";
 
 /** File types the API serves inline (web: AttachmentList / DrivePage canPreview). */
 export const canPreview = (mimeType) => /^(application\/pdf|image\/(jpeg|png|webp))$/.test(mimeType ?? "");
 
-async function open(ticketPath, disposition) {
+async function open(ticketPath, disposition, mimeType, name) {
   const { url } = await api(ticketPath, { body: { disposition } });
+  // The browser build keeps opening a new tab, as the website does.
+  if (disposition === "inline" && Platform.OS !== "web" && filePreviewAvailable()) {
+    showFilePreview({ url, mimeType, name });
+    return;
+  }
   await Linking.openURL(url);
 }
 
@@ -17,8 +24,8 @@ async function open(ticketPath, disposition) {
  * Opens a file: for viewing when its type can be previewed, otherwise as a download.
  * `ticketPath` is `/materials/:id/attachments/:attId/ticket` or `/drive/:id/ticket`. Errors propagate.
  */
-export function openTicket(ticketPath, mimeType) {
-  return open(ticketPath, canPreview(mimeType) ? "inline" : "attachment");
+export function openTicket(ticketPath, mimeType, name) {
+  return open(ticketPath, canPreview(mimeType) ? "inline" : "attachment", mimeType, name);
 }
 
 /** Downloads a file whatever its type, like web's Download buttons. Errors propagate. */

@@ -52,7 +52,7 @@ function AttachmentRow({ materialId, a, removable, onRemove }) {
           ) : (
             <>
               {canPreview(a.mimeType) ? (
-                <Button small variant="secondary" loading={busy === "inline"} onPress={() => run("inline", () => openTicket(ticket, a.mimeType))}>Preview</Button>
+                <Button small variant="secondary" loading={busy === "inline"} onPress={() => run("inline", () => openTicket(ticket, a.mimeType, a.name))}>Preview</Button>
               ) : null}
               <Button small variant="secondary" loading={busy === "attachment"} onPress={() => run("attachment", () => downloadTicket(ticket))}>Download</Button>
             </>
